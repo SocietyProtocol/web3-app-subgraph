@@ -1,0 +1,42 @@
+specVersion: 0.0.2
+schema:
+  file: ./schema.graphql
+dataSources:
+  - kind: ethereum/contract
+    name: SocietyProtocolBadges
+    network: { { network } }
+    source:
+      abi: SocietyProtocolBadges
+      address: "{{address}}"
+      startBlock: { { startBlock } }
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.5
+      language: wasm/assemblyscript
+      entities:
+        - BadgeCreated
+        - HookUpdated
+        - PermissionsUpdated
+        - ProfileCreated
+        - RoleAdminChanged
+        - RoleGranted
+        - RoleRevoked
+      abis:
+        - name: SocietyProtocolBadges
+          file: ./abis/SocietyProtocolBadges.json
+      eventHandlers:
+        - event: BadgeCreated(indexed uint256,string,bool)
+          handler: handleBadgeCreated
+        - event: HookUpdated(indexed uint256,indexed address)
+          handler: handleHookUpdated
+        - event: PermissionsUpdated(indexed uint256,indexed address,bool,bool,bool)
+          handler: handlePermissionsUpdated
+        - event: ProfileCreated(indexed address,indexed uint256)
+          handler: handleProfileCreated
+        - event: URI(string,indexed uint256)
+          handler: handleURI
+        - event: TransferSingle(indexed address,indexed address,indexed address,uint256,uint256)
+          handler: handleTransferSingle
+        - event: TransferBatch(indexed address,indexed address,indexed address,uint256[],uint256[])
+          handler: handleTransferBatch
+      file: ./src/society-protocol-badges.ts

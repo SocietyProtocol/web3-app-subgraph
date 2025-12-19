@@ -1,0 +1,14 @@
+{
+  "mainnet": {
+    "SocietyProtocolBadges": {
+      "address": "0x5FbDB2315678afecb367f032d93F642f64180aa3",
+      "startBlock": 12000000
+    }
+  },
+  "sepolia": {
+    "SocietyProtocolBadges": {
+      "address": "0x21d798f885609b228D05a75f8bD9a4De538fbf11",
+      "startBlock": 9853527
+    }
+  }
+}
