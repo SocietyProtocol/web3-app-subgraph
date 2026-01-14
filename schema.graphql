@@ -13,3 +13,55 @@ type Badge @entity(immutable: false) {
   owners: [User!]! @derivedFrom(field: "badges")
   createdAt: BigInt!
 }
+
+type Order @entity(immutable: false) {
+  id: ID!
+  auctionId: BigInt!
+  sellAmount: BigInt!
+  buyAmount: BigInt! # uint256
+  auctionUserId: BigInt! # uint96
+  auctionUser: AuctionUser!
+  userAddress: Bytes!
+  price: BigDecimal!
+  volume: BigDecimal!
+  timestamp: BigInt!
+}
+
+type AuctionUser @entity(immutable: false) {
+  id: ID!
+  address: Bytes!
+  auctions: [AuctionDetail!]!
+  user: User
+  orders: [Order!]! @derivedFrom(field: "auctionUser")
+}
+
+type AuctionDetail @entity(immutable: false) {
+  id: ID!
+  auctionId: BigInt!
+  exactOrder: Order!
+  chainId: String!
+  orders: [Order!]
+  ordersWithoutClaimed: [Order!]
+  symbolAuctioningToken: String!
+  symbolBiddingToken: String!
+  addressAuctioningToken: Bytes!
+  addressBiddingToken: Bytes!
+  decimalsAuctioningToken: BigInt!
+  decimalsBiddingToken: BigInt!
+  endTimeTimestamp: BigInt!
+  orderCancellationEndDate: BigInt!
+  startingTimeStamp: BigInt!
+  minimumBiddingAmountPerOrder: BigInt!
+  minFundingThreshold: BigInt!
+  allowListManager: Bytes!
+  allowListSigner: Bytes!
+  currentVolume: BigDecimal!
+  currentClearingOrderSellAmount: BigInt!
+  currentClearingOrderBuyAmount: BigInt!
+  currentClearingPrice: BigDecimal!
+  currentBiddingAmount: BigInt!
+  isAtomicClosureAllowed: Boolean!
+  isPrivateAuction: Boolean!
+  interestScore: BigDecimal!
+  usdAmountTraded: BigDecimal!
+}

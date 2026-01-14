@@ -8,7 +8,7 @@ import {
   TransferBatch,
   TransferSingle,
   URI,
-} from "../generated/SocietyProtocolBadges/SocietyProtocolBadges";
+} from "../../generated/SocietyProtocolBadges/SocietyProtocolBadges";
 
 export const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 

@@ -4,11 +4,11 @@
   "scripts": {
     "codegen": "graph codegen",
     "build": "graph build",
-    "deploy": "graph deploy --node https://api.studio.thegraph.com/deploy/ society-badges-mainnet",
-    "deploy:testnet": "graph deploy --node https://api.studio.thegraph.com/deploy/ society-badges-testnet",
-    "create-local": "graph create --node http://localhost:8020/ society-badges-mainnet",
-    "remove-local": "graph remove --node http://localhost:8020/ society-badges-mainnet",
-    "deploy-local": "graph deploy --node http://localhost:8020/ --ipfs http://localhost:5001 society-badges-mainnet",
+    "deploy": "graph deploy --node https://api.studio.thegraph.com/deploy/ society-mainnet",
+    "deploy:testnet": "graph deploy --node https://api.studio.thegraph.com/deploy/ society-testnet",
+    "create-local": "graph create --node http://localhost:8020/ society-mainnet",
+    "remove-local": "graph remove --node http://localhost:8020/ society-mainnet",
+    "deploy-local": "graph deploy --node http://localhost:8020/ --ipfs http://localhost:5001 society-mainnet",
     "test": "graph test"
   },
   "dependencies": {

@@ -3,12 +3,20 @@
     "SocietyProtocolBadges": {
       "address": "0x5FbDB2315678afecb367f032d93F642f64180aa3",
       "startBlock": 12000000
+    },
+    "EasyAuction": {
+      "address": "0x0b7fFc1f4AD541A4Ed16b40D8c37f0929158D101",
+      "startBlock": 12135186
     }
   },
   "sepolia": {
     "SocietyProtocolBadges": {
       "address": "0x21d798f885609b228D05a75f8bD9a4De538fbf11",
       "startBlock": 9853527
+    },
+    "EasyAuction": {
+      "address": "0x96aa924EF625bd8eF4A2C4d369408d1491453Ec5",
+      "startBlock": 9860928
     }
   }
 }
