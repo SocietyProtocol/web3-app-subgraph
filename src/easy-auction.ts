@@ -9,7 +9,6 @@ import {
   Address,
   BigInt,
   BigDecimal,
-  log,
   dataSource,
   store,
   Bytes,
@@ -276,7 +275,10 @@ export function handleNewSellOrder(event: NewSellOrder): void {
 
   let user = AuctionUser.load(userId.toString());
   if (!user) {
-    user = new AuctionUser(userId.toString());
+    // User should have been created and initialized (including address)
+    // in a separate handler (e.g. handleNewAuctionUser). If it's missing,
+    // we cannot safely proceed.
+    return;
   }
 
   let auctionDetails = AuctionDetail.load(auctionId.toString());
@@ -316,7 +318,6 @@ export function handleNewSellOrder(event: NewSellOrder): void {
     ordersWithoutClaimed = auctionDetails.ordersWithoutClaimed!;
   }
   ordersWithoutClaimed.push(order.id);
-  auctionDetails.ordersWithoutClaimed = ordersWithoutClaimed;
   auctionDetails.ordersWithoutClaimed = ordersWithoutClaimed;
 
   // Check if auctionId is present in userAuctions list. If not, add it.
@@ -452,7 +453,6 @@ function updateClearingOrderAndVolume(auctionId: BigInt): void {
         .plus(volume);
       auctionDetails.currentClearingOrderBuyAmount = currentOrder.buyAmount;
       auctionDetails.currentClearingOrderSellAmount = currentOrder.sellAmount;
-      auctionDetails.currentClearingPrice = currentOrder.price;
       auctionDetails.currentClearingPrice = convertToPricePoint(
         currentOrder.sellAmount,
         currentOrder.buyAmount,

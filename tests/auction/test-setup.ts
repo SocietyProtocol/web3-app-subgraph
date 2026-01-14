@@ -72,8 +72,8 @@ export function mockAuctionContractCalls(
   );
 
   mockTokenSymbol(auctioningTokenContractAddress, "AUT");
-  mockTokenDecimals(auctioningTokenContractAddress, biddingTokenDecimals);
+  mockTokenDecimals(auctioningTokenContractAddress, auctioningTokenDecimals);
 
   mockTokenSymbol(biddingTokenContractAddress, "BDT");
-  mockTokenDecimals(biddingTokenContractAddress, auctioningTokenDecimals);
+  mockTokenDecimals(biddingTokenContractAddress, biddingTokenDecimals);
 }

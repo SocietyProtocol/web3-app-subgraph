@@ -188,7 +188,7 @@ describe("Can call mappings with custom events", () => {
 
     let orders = auctionDetail!.orders;
     // Expect the order to be added to the auctionDetail
-    // Check that order id is `{auctionId}-{sellAmount}-{buyAmount}-{userId}`
+    // Check that order id is `{auctionId}-{buyAmount}-{sellAmount}-{userId}`
     assert.stringEquals(orders![0], "1-2-1-2");
     log.success("handleNewSellOrder adds order to AuctionDetail", []);
 
@@ -204,7 +204,7 @@ describe("Can call mappings with custom events", () => {
     auctionDetail = AuctionDetail.load("1");
     orders = auctionDetail!.orders;
     // Expect the order to be removed from the auctionDetail
-    assert.assertNull(orders!.length);
+    assert.i32Equals(orders!.length, 0);
     log.success(
       "handleCancellationSellOrder removes order from AuctionDetail",
       []
@@ -242,7 +242,7 @@ describe("Can call mappings with custom events", () => {
 
     let orders = auctionDetail!.ordersWithoutClaimed;
     // Expect the order to be added to the auctionDetail
-    // Check that order id is `{auctionId}-{buyAmount}-{sellAmount}-{userId}`
+    // Check that order id is `{auctionId}-{sellAmount}-{buyAmount}-{userId}`
     assert.stringEquals(orders![0], "1-2-1-2");
     log.success("handleNewSellOrder adds order to AuctionDetail", []);
 
@@ -258,7 +258,7 @@ describe("Can call mappings with custom events", () => {
     auctionDetail = AuctionDetail.load("1");
     orders = auctionDetail!.ordersWithoutClaimed;
     // Expect the order to be removed from the auctionDetail
-    assert.assertNull(orders!.length);
+    assert.i32Equals(orders!.length, 0);
     log.success("handleClaimedFromOrder removes order from AuctionDetail", []);
   });
 });
