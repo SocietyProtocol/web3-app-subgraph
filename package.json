@@ -2,13 +2,15 @@
   "name": "society-protocol-badges-subgraph",
   "license": "UNLICENSED",
   "scripts": {
+    "prepare:mainnet": "node scripts/prepare.js mainnet",
+    "prepare:sepolia": "node scripts/prepare.js sepolia",
     "codegen": "graph codegen",
     "build": "graph build",
-    "deploy": "graph deploy --node https://api.studio.thegraph.com/deploy/ society-mainnet",
-    "deploy:testnet": "graph deploy --node https://api.studio.thegraph.com/deploy/ society-testnet",
+    "deploy": "yarn run prepare:mainnet && graph codegen && graph build && graph deploy --node https://api.studio.thegraph.com/deploy/ society-mainnet",
+    "deploy:testnet": "yarn run prepare:sepolia && graph codegen && graph build && graph deploy --node https://api.studio.thegraph.com/deploy/ society-testnet",
     "create-local": "graph create --node http://localhost:8020/ society-mainnet",
     "remove-local": "graph remove --node http://localhost:8020/ society-mainnet",
-    "deploy-local": "graph deploy --node http://localhost:8020/ --ipfs http://localhost:5001 society-mainnet",
+    "deploy-local": "yarn run prepare:mainnet && graph codegen && graph build && graph deploy --node http://localhost:8020/ --ipfs http://localhost:5001 society-mainnet",
     "test": "graph test"
   },
   "dependencies": {
