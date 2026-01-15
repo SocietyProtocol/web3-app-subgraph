@@ -167,10 +167,27 @@ export function handleNewAuction(event: NewAuction): void {
   let auctioningERC20Contract = ERC20Contract.bind(addressAuctioningToken);
   let auctionContract = EasyAuction.bind(event.address);
   let isAtomicClosureAllowed = auctionContract.auctionData(auctionId).value11;
-  let symbolAuctioningToken = auctioningERC20Contract.symbol();
-  let decimalAuctioningToken = auctioningERC20Contract.decimals();
-  let symbolBiddingToken = biddingERC20Contract.symbol();
-  let decimalBiddingToken = biddingERC20Contract.decimals();
+
+  // Use try_* methods to handle contracts that don't properly implement ERC20
+  let symbolAuctioningTokenResult = auctioningERC20Contract.try_symbol();
+  let symbolAuctioningToken = symbolAuctioningTokenResult.reverted
+    ? "UNKNOWN"
+    : symbolAuctioningTokenResult.value;
+
+  let decimalAuctioningTokenResult = auctioningERC20Contract.try_decimals();
+  let decimalAuctioningToken = decimalAuctioningTokenResult.reverted
+    ? 18
+    : decimalAuctioningTokenResult.value;
+
+  let symbolBiddingTokenResult = biddingERC20Contract.try_symbol();
+  let symbolBiddingToken = symbolBiddingTokenResult.reverted
+    ? "UNKNOWN"
+    : symbolBiddingTokenResult.value;
+
+  let decimalBiddingTokenResult = biddingERC20Contract.try_decimals();
+  let decimalBiddingToken = decimalBiddingTokenResult.reverted
+    ? 18
+    : decimalBiddingTokenResult.value;
   let pricePoint = convertToPricePoint(
     sellAmount,
     buyAmount,
