@@ -7,7 +7,7 @@ import {
   test,
 } from "matchstick-as/assembly/index";
 import { Address, BigInt, Bytes } from "@graphprotocol/graph-ts";
-import { Badge, User } from "../generated/schema";
+import { Badge, User } from "../../generated/schema";
 import {
   handleBadgeCreated,
   handleHookUpdated,
@@ -15,7 +15,7 @@ import {
   handleTransferBatch,
   handleTransferSingle,
   handleURI,
-} from "../src/society-protocol-badges";
+} from "../../src/society-protocol-badges";
 import {
   createBadgeCreatedEvent,
   createHookUpdatedEvent,
