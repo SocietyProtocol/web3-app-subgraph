@@ -205,7 +205,6 @@ export function handleNewAuction(event: NewAuction): void {
   order.auctionId = auctionId;
   order.buyAmount = buyAmount;
   order.sellAmount = sellAmount;
-  order.auctionUserId = userId;
   order.auctionUser = userId.toString();
   order.userAddress = user.address;
   order.volume = pricePoint.get("volume");
@@ -315,7 +314,6 @@ export function handleNewSellOrder(event: NewSellOrder): void {
   order.auctionId = auctionId;
   order.buyAmount = buyAmount;
   order.sellAmount = sellAmount;
-  order.auctionUserId = userId;
   order.auctionUser = userId.toString();
   order.userAddress = user.address;
   order.price = pricePoint.get("price");

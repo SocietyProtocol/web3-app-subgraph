@@ -152,7 +152,7 @@ describe("Can call mappings with custom events", () => {
 
     let orders = auctionDetail!.orders;
     // Expect the order to be added to the auctionDetail
-    // Check that order id is `{auctionId}-{buyAmount}-{sellAmount}-{userId}`
+    // Check that order id is `{auctionId}-{sellAmount}-{buyAmount}-{userId}`
     assert.stringEquals(orders![0], "1-2-1-2");
     log.success("handleNewSellOrder adds order to AuctionDetail", []);
   });
@@ -188,7 +188,7 @@ describe("Can call mappings with custom events", () => {
 
     let orders = auctionDetail!.orders;
     // Expect the order to be added to the auctionDetail
-    // Check that order id is `{auctionId}-{buyAmount}-{sellAmount}-{userId}`
+    // Check that order id is `{auctionId}-{sellAmount}-{buyAmount}-{userId}`
     assert.stringEquals(orders![0], "1-2-1-2");
     log.success("handleNewSellOrder adds order to AuctionDetail", []);
 

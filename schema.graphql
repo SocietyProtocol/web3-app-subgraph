@@ -19,7 +19,6 @@ type Order @entity(immutable: false) {
   auctionId: BigInt!
   sellAmount: BigInt!
   buyAmount: BigInt! # uint256
-  auctionUserId: BigInt! # uint96
   auctionUser: AuctionUser!
   userAddress: Bytes!
   price: BigDecimal!
