@@ -195,11 +195,9 @@ export function handleNewAuction(event: NewAuction): void {
     decimalAuctioningToken
   );
 
-  let isPrivateAuction = allowListContract.equals(
+  let isPrivateAuction = !allowListContract.equals(
     Address.fromString("0x0000000000000000000000000000000000000000")
-  )
-    ? false
-    : true;
+  );
 
   let order = new Order(entityId);
   order.auctionId = auctionId;
@@ -234,15 +232,15 @@ export function handleNewAuction(event: NewAuction): void {
   auctionDetails.allowListManager = event.params.allowListContract;
   auctionDetails.allowListSigner = allowListSigner;
   auctionDetails.currentClearingPrice = ONE.divDecimal(pricePoint.get("price"));
-  auctionDetails.currentBiddingAmount = new BigInt(0);
+  auctionDetails.currentBiddingAmount = BigInt.zero();
   auctionDetails.isAtomicClosureAllowed = isAtomicClosureAllowed;
   auctionDetails.isPrivateAuction = isPrivateAuction;
-  auctionDetails.interestScore = new BigDecimal(new BigInt(0));
-  auctionDetails.usdAmountTraded = new BigDecimal(new BigInt(0));
+  auctionDetails.interestScore = BigDecimal.fromString("0");
+  auctionDetails.usdAmountTraded = BigDecimal.fromString("0");
   auctionDetails.chainId = getChainHexFromName(dataSource.network());
   auctionDetails.currentVolume = BigDecimal.fromString("0");
-  auctionDetails.currentClearingOrderSellAmount = new BigInt(0);
-  auctionDetails.currentClearingOrderBuyAmount = new BigInt(0);
+  auctionDetails.currentClearingOrderSellAmount = BigInt.zero();
+  auctionDetails.currentClearingOrderBuyAmount = BigInt.zero();
   auctionDetails.orders = [];
   auctionDetails.ordersWithoutClaimed = [];
   auctionDetails.save();
@@ -302,7 +300,7 @@ export function handleNewSellOrder(event: NewSellOrder): void {
     return;
   }
 
-  let entityId = `${auctionId.toString()}-${sellAmount.toString()}-${buyAmount.toString()}-${userId.toString()}`;
+  let entityId = getOrderEntityId(auctionId, sellAmount, buyAmount, userId);
   let pricePoint = convertToPricePoint(
     sellAmount,
     buyAmount,

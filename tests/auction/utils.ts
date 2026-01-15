@@ -157,7 +157,7 @@ export function createNewClaimEvent(
   buyAmount: BigInt,
   sellAmount: BigInt
 ): ClaimedFromOrder {
-  let newCancelOrderEvent = changetype<ClaimedFromOrder>(
+  let newClaimedFromOrderEvent = changetype<ClaimedFromOrder>(
     newMockEventWithParams([
       new ethereum.EventParam("auctionId", ethereum.Value.fromI32(auctionId)),
       new ethereum.EventParam("userId", ethereum.Value.fromI32(userId)),
@@ -172,7 +172,7 @@ export function createNewClaimEvent(
     ])
   );
 
-  return newCancelOrderEvent;
+  return newClaimedFromOrderEvent;
 }
 
 export function mockAuctionDataFunctionCall(

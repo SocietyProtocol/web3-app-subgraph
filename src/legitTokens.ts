@@ -14,7 +14,7 @@ legitTokens.set(
   1,
   new LegitTokens(1, [
     // USDC
-    "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+    "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
   ])
 );
 
@@ -22,7 +22,7 @@ legitTokens.set(
   11155111,
   new LegitTokens(11155111, [
     // Sepolia USDC
-    "0x730B28005E3F107a719d6e1A64246eDA86374C00",
+    "0x730b28005e3f107a719d6e1a64246eda86374c00",
   ])
 );
 

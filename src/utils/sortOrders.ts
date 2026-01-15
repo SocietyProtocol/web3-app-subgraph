@@ -4,8 +4,8 @@ import { BigDecimal, BigInt } from "@graphprotocol/graph-ts";
  * Sorts orders based on price (biddingTokenAmount / auctioningTokenAmount).
  *
  * @param orders Array of order ID strings in the format "auctionId-sellAmount-buyAmount-userId".
- *               The sellAmount represents the auctioning token amount and the buyAmount represents
- *               the bidding token amount.
+ *               The sellAmount represents the bidding token amount and the buyAmount represents
+ *               the auctioning token amount.
  * @returns The sorted array of order ID strings, ordered by price ascending
  *          (biddingTokenAmount / auctioningTokenAmount), then by bidding amount ascending,
  *          and finally by user ID ascending.
@@ -46,7 +46,7 @@ function sortOrders(orders: Array<string>): Array<string> {
       return 1;
     }
 
-    return -1;
+    return 0;
   });
   return orders;
 }
