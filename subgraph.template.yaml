@@ -25,7 +25,7 @@ dataSources:
         - name: SocietyProtocolBadges
           file: ./abis/SocietyProtocolBadges.json
       eventHandlers:
-        - event: BadgeCreated(indexed uint256,string,bool)
+        - event: BadgeCreated(indexed uint256,string,bool,bool,indexed address)
           handler: handleBadgeCreated
         - event: HookUpdated(indexed uint256,indexed address)
           handler: handleHookUpdated

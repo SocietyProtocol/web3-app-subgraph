@@ -21,23 +21,6 @@ const findOrCreateUser = (userId: string): User => {
   return user;
 };
 
-export function loadOrCreateBadge(badgeId: string, timestamp: BigInt): Badge {
-  let badge = Badge.load(badgeId);
-
-  if (badge == null) {
-    badge = new Badge(badgeId);
-    badge.createdAt = timestamp;
-    badge.hookAddress = new Bytes(0);
-    badge.name = "";
-    badge.isOfficial = false;
-    badge.uri = "";
-
-    badge.save();
-  }
-
-  return badge;
-}
-
 export function handleBadgeCreated(event: BadgeCreated): void {
   const badge = new Badge(event.params.id.toString());
 
@@ -46,6 +29,7 @@ export function handleBadgeCreated(event: BadgeCreated): void {
   badge.createdBy = createdByUser.id;
   badge.name = event.params.name;
   badge.isOfficial = event.params.isOfficial;
+  badge.isCommunity = event.params.isCommunity;
   badge.hookAddress = new Bytes(0);
   badge.createdAt = event.block.timestamp;
   badge.uri = "";

@@ -8,6 +8,7 @@ type Badge @entity(immutable: false) {
   id: ID!
   name: String!
   isOfficial: Boolean!
+  isCommunity: Boolean!
   uri: String
   hookAddress: Bytes!
   holders: [User!]! @derivedFrom(field: "badges")

@@ -144,9 +144,83 @@
         "internalType": "bool",
         "name": "isOfficial",
         "type": "bool"
+      },
+      {
+        "indexed": false,
+        "internalType": "bool",
+        "name": "isCommunity",
+        "type": "bool"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "creator",
+        "type": "address"
       }
     ],
     "name": "BadgeCreated",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "id",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "name",
+        "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "bool",
+        "name": "isOfficial",
+        "type": "bool"
+      },
+      {
+        "indexed": false,
+        "internalType": "bool",
+        "name": "isCommunity",
+        "type": "bool"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "metadataURI",
+        "type": "string"
+      }
+    ],
+    "name": "BadgeModified",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "id",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "editor",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "bool",
+        "name": "isAllowed",
+        "type": "bool"
+      }
+    ],
+    "name": "EditorsUpdated",
     "type": "event"
   },
   {
@@ -179,43 +253,6 @@
       }
     ],
     "name": "Initialized",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "internalType": "uint256",
-        "name": "id",
-        "type": "uint256"
-      },
-      {
-        "indexed": true,
-        "internalType": "address",
-        "name": "operator",
-        "type": "address"
-      },
-      {
-        "indexed": false,
-        "internalType": "bool",
-        "name": "mint",
-        "type": "bool"
-      },
-      {
-        "indexed": false,
-        "internalType": "bool",
-        "name": "transfer",
-        "type": "bool"
-      },
-      {
-        "indexed": false,
-        "internalType": "bool",
-        "name": "burn",
-        "type": "bool"
-      }
-    ],
-    "name": "PermissionsUpdated",
     "type": "event"
   },
   {
@@ -420,6 +457,13 @@
   },
   {
     "inputs": [],
+    "name": "CONTRACT_UPGRADER_ROLE",
+    "outputs": [{ "internalType": "bytes32", "name": "", "type": "bytes32" }],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "DEFAULT_ADMIN_ROLE",
     "outputs": [{ "internalType": "bytes32", "name": "", "type": "bytes32" }],
     "stateMutability": "view",
@@ -427,15 +471,36 @@
   },
   {
     "inputs": [],
-    "name": "GOVERNOR_ROLE",
+    "name": "OFFICIAL_BADGE_CREATOR_ROLE",
     "outputs": [{ "internalType": "bytes32", "name": "", "type": "bytes32" }],
     "stateMutability": "view",
     "type": "function"
   },
   {
     "inputs": [],
-    "name": "MINTER_ROLE",
-    "outputs": [{ "internalType": "bytes32", "name": "", "type": "bytes32" }],
+    "name": "PERM_EVERYONE",
+    "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "PERM_NONE",
+    "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "PERM_SELF",
+    "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "STARTING_BADGE_ID",
+    "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
     "stateMutability": "view",
     "type": "function"
   },
@@ -459,6 +524,7 @@
     "outputs": [
       { "internalType": "string", "name": "name", "type": "string" },
       { "internalType": "bool", "name": "isOfficial", "type": "bool" },
+      { "internalType": "bool", "name": "isCommunity", "type": "bool" },
       { "internalType": "string", "name": "metadataURI", "type": "string" }
     ],
     "stateMutability": "view",
@@ -489,10 +555,10 @@
   {
     "inputs": [
       { "internalType": "uint256", "name": "", "type": "uint256" },
-      { "internalType": "address", "name": "", "type": "address" }
+      { "internalType": "uint256", "name": "", "type": "uint256" }
     ],
     "name": "canBurn",
-    "outputs": [{ "internalType": "bool", "name": "", "type": "bool" }],
+    "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
     "stateMutability": "view",
     "type": "function"
   },
@@ -500,52 +566,48 @@
     "inputs": [
       { "internalType": "uint256", "name": "", "type": "uint256" },
       { "internalType": "address", "name": "", "type": "address" }
+    ],
+    "name": "canEdit",
+    "outputs": [{ "internalType": "bool", "name": "", "type": "bool" }],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "uint256", "name": "", "type": "uint256" },
+      { "internalType": "uint256", "name": "", "type": "uint256" }
     ],
     "name": "canMint",
-    "outputs": [{ "internalType": "bool", "name": "", "type": "bool" }],
+    "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
     "stateMutability": "view",
     "type": "function"
   },
   {
     "inputs": [
       { "internalType": "uint256", "name": "", "type": "uint256" },
-      { "internalType": "address", "name": "", "type": "address" }
+      { "internalType": "uint256", "name": "", "type": "uint256" }
     ],
     "name": "canTransfer",
-    "outputs": [{ "internalType": "bool", "name": "", "type": "bool" }],
+    "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
     "stateMutability": "view",
     "type": "function"
   },
   {
     "inputs": [
       { "internalType": "string", "name": "name", "type": "string" },
+      { "internalType": "bool", "name": "isOfficial", "type": "bool" },
+      { "internalType": "bool", "name": "isCommunity", "type": "bool" },
       { "internalType": "string", "name": "metadataURI", "type": "string" },
-      { "internalType": "address[]", "name": "minters", "type": "address[]" },
+      { "internalType": "uint256[]", "name": "minters", "type": "uint256[]" },
       {
-        "internalType": "address[]",
+        "internalType": "uint256[]",
         "name": "transferers",
-        "type": "address[]"
+        "type": "uint256[]"
       },
-      { "internalType": "address[]", "name": "burners", "type": "address[]" }
+      { "internalType": "uint256[]", "name": "burners", "type": "uint256[]" },
+      { "internalType": "address[]", "name": "editors", "type": "address[]" }
     ],
-    "name": "createCommunityBadge",
-    "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      { "internalType": "string", "name": "name", "type": "string" },
-      { "internalType": "string", "name": "metadataURI", "type": "string" },
-      { "internalType": "address[]", "name": "minters", "type": "address[]" },
-      {
-        "internalType": "address[]",
-        "name": "transferers",
-        "type": "address[]"
-      },
-      { "internalType": "address[]", "name": "burners", "type": "address[]" }
-    ],
-    "name": "createOfficialBadge",
+    "name": "createBadge",
     "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -625,8 +687,28 @@
     "type": "function"
   },
   {
+    "inputs": [
+      { "internalType": "uint256", "name": "id", "type": "uint256" },
+      { "internalType": "string", "name": "name", "type": "string" },
+      { "internalType": "bool", "name": "isOfficial", "type": "bool" },
+      { "internalType": "bool", "name": "isCommunity", "type": "bool" },
+      { "internalType": "string", "name": "metadataURI", "type": "string" }
+    ],
+    "name": "modifyBadge",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
     "inputs": [],
     "name": "nextTokenId",
+    "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [{ "internalType": "address", "name": "", "type": "address" }],
+    "name": "profileBadgeId",
     "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
     "stateMutability": "view",
     "type": "function"
@@ -769,13 +851,6 @@
     "inputs": [{ "internalType": "uint256", "name": "id", "type": "uint256" }],
     "name": "uri",
     "outputs": [{ "internalType": "string", "name": "", "type": "string" }],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [{ "internalType": "address", "name": "", "type": "address" }],
-    "name": "userProfileId",
-    "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
     "stateMutability": "view",
     "type": "function"
   }
