@@ -10,7 +10,8 @@ type Badge @entity(immutable: false) {
   isOfficial: Boolean!
   uri: String
   hookAddress: Bytes!
-  owners: [User!]! @derivedFrom(field: "badges")
+  holders: [User!]! @derivedFrom(field: "badges")
+  createdBy: User!
   createdAt: BigInt!
 }
 

@@ -9,6 +9,18 @@ import {
   URI,
 } from "../generated/SocietyProtocolBadges/SocietyProtocolBadges";
 
+const findOrCreateUser = (userId: string): User => {
+  let user = User.load(userId);
+
+  if (user == null) {
+    user = new User(userId);
+    user.badges = [];
+    user.save();
+  }
+
+  return user;
+};
+
 export function loadOrCreateBadge(badgeId: string, timestamp: BigInt): Badge {
   let badge = Badge.load(badgeId);
 
@@ -29,6 +41,9 @@ export function loadOrCreateBadge(badgeId: string, timestamp: BigInt): Badge {
 export function handleBadgeCreated(event: BadgeCreated): void {
   const badge = new Badge(event.params.id.toString());
 
+  const createdByUser = findOrCreateUser(event.transaction.from.toHexString());
+
+  badge.createdBy = createdByUser.id;
   badge.name = event.params.name;
   badge.isOfficial = event.params.isOfficial;
   badge.hookAddress = new Bytes(0);
@@ -50,11 +65,7 @@ export function handleHookUpdated(event: HookUpdated): void {
 export function handleProfileCreated(event: ProfileCreated): void {
   const userId = event.params.user;
 
-  const user = User.load(userId.toHexString());
-
-  if (user == null) {
-    return;
-  }
+  const user = findOrCreateUser(userId.toHexString());
 
   const badge = Badge.load(event.params.id.toString());
 
@@ -78,9 +89,9 @@ export function handleURI(event: URI): void {
 
 export function mint(badgeId: BigInt, userId: Address, value: BigInt): void {
   const badge = Badge.load(badgeId.toString());
-  const user = User.load(userId.toHexString());
+  const user = findOrCreateUser(userId.toHexString());
 
-  if (badge == null || user == null) {
+  if (badge == null) {
     return;
   }
   const alreadyHasBadge = user.badges.indexOf(badge.id) >= 0;
@@ -94,9 +105,9 @@ export function mint(badgeId: BigInt, userId: Address, value: BigInt): void {
 
 export function burn(badgeId: BigInt, userId: Address, value: BigInt): void {
   const badge = Badge.load(badgeId.toString());
-  const user = User.load(userId.toHexString());
+  const user = findOrCreateUser(userId.toHexString());
 
-  if (badge == null || user == null) {
+  if (badge == null) {
     return;
   }
   const badgeIndex = user.badges.indexOf(badge.id);
@@ -116,10 +127,10 @@ export function transfer(
   value: BigInt
 ): void {
   const badge = Badge.load(badgeId.toString());
-  const fromUser = User.load(fromUserId.toHexString());
-  const toUser = User.load(toUserId.toHexString());
+  const fromUser = findOrCreateUser(fromUserId.toHexString());
+  const toUser = findOrCreateUser(toUserId.toHexString());
 
-  if (badge == null || fromUser == null || toUser == null) {
+  if (badge == null) {
     return;
   }
 
