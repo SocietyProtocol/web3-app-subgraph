@@ -59,6 +59,7 @@ export function handleBadgeCreated(event: BadgeCreated): void {
 
   const createdByUser = findOrCreateUser(event.transaction.from.toHexString());
 
+  badge.creatorAddress = event.transaction.from.toHexString();
   badge.createdBy = createdByUser.id;
   badge.name = event.params.name;
   badge.isOfficial = event.params.isOfficial;
