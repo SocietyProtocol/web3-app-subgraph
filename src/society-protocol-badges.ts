@@ -1,9 +1,17 @@
-import { Address, BigInt, Bytes } from "@graphprotocol/graph-ts";
+import {
+  Address,
+  BigInt,
+  Bytes,
+  ipfs,
+  json,
+  log,
+} from "@graphprotocol/graph-ts";
 import { Badge, User } from "../generated/schema";
 import {
   BadgeCreated,
   HookUpdated,
   ProfileCreated,
+  SocietyProtocolBadges,
   TransferBatch,
   TransferSingle,
   URI,
@@ -21,6 +29,31 @@ const findOrCreateUser = (userId: string): User => {
   return user;
 };
 
+const getImageUrlFromMetadata = (uri: string | null): string | null => {
+  if (uri !== null && uri.includes("/ipfs/")) {
+    const parts = uri.split("/ipfs/");
+    if (parts.length > 1) {
+      const hash = parts[parts.length - 1];
+      log.info("IPFS Hash: {}", [hash]);
+      const metadata = ipfs.cat(hash);
+
+      log.info("Metadata: {}", [metadata ? metadata.toString() : "null"]);
+
+      if (metadata !== null) {
+        const jsonData = json.fromBytes(metadata).toObject();
+
+        const imageUrl = jsonData.get("imageUrl");
+        log.info("Image URL: {}", [imageUrl ? imageUrl.toString() : "null"]);
+
+        if (imageUrl !== null) {
+          return imageUrl.toString();
+        }
+      }
+    }
+  }
+  return null;
+};
+
 export function handleBadgeCreated(event: BadgeCreated): void {
   const badge = new Badge(event.params.id.toString());
 
@@ -32,7 +65,19 @@ export function handleBadgeCreated(event: BadgeCreated): void {
   badge.isCommunity = event.params.isCommunity;
   badge.hookAddress = new Bytes(0);
   badge.createdAt = event.block.timestamp;
-  badge.uri = "";
+
+  const contract = SocietyProtocolBadges.bind(event.address);
+
+  const uriResult = contract.try_uri(event.params.id);
+
+  if (!uriResult.reverted) {
+    badge.uri = uriResult.value;
+  } else {
+    badge.uri = "";
+  }
+
+  badge.imageUrl = getImageUrlFromMetadata(badge.uri);
+
   badge.save();
 }
 
@@ -68,6 +113,9 @@ export function handleURI(event: URI): void {
   }
 
   badge.uri = event.params.value;
+
+  badge.imageUrl = getImageUrlFromMetadata(event.params.value);
+
   badge.save();
 }
 
@@ -108,7 +156,7 @@ export function transfer(
   badgeId: BigInt,
   fromUserId: Address,
   toUserId: Address,
-  value: BigInt
+  value: BigInt,
 ): void {
   const badge = Badge.load(badgeId.toString());
   const fromUser = findOrCreateUser(fromUserId.toHexString());
@@ -160,7 +208,7 @@ export function handleTransferSingle(event: TransferSingle): void {
       event.params.id,
       event.params.from,
       event.params.to,
-      event.params.value
+      event.params.value,
     );
   }
 }
