@@ -2,17 +2,37 @@ type User @entity(immutable: false) {
   id: ID!
   profile: Badge
   badges: [Badge!]!
+  managedBadges: [Badge!]!
 }
 
 type Badge @entity(immutable: false) {
   id: ID!
   name: String!
   isOfficial: Boolean!
+  isCommunity: Boolean!
   uri: String
   hookAddress: Bytes!
-  owners: [User!]! @derivedFrom(field: "badges")
+  creatorAddress: String!
   createdAt: BigInt!
+  imageUrl: String
+  createdBy: User!
+  managers: [User!]! @derivedFrom(field: "managedBadges")
+  holders: [User!]! @derivedFrom(field: "badges")
+  holdersCount: BigInt!
 }
+
+type _Schema_
+  @fulltext(
+    name: "badgeSearch"
+    language: en
+    algorithm: rank
+    include: [
+      {
+        entity: "Badge"
+        fields: [{ name: "id" }, { name: "name" }, { name: "creatorAddress" }]
+      }
+    ]
+  )
 
 type Order @entity(immutable: false) {
   id: ID!

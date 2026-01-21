@@ -1,39 +1,108 @@
-import { Address, BigInt, Bytes } from "@graphprotocol/graph-ts";
+import {
+  Address,
+  BigInt,
+  Bytes,
+  ipfs,
+  json,
+  log,
+} from "@graphprotocol/graph-ts";
 import { Badge, User } from "../generated/schema";
 import {
   BadgeCreated,
+  EditorsUpdated,
   HookUpdated,
   ProfileCreated,
+  SocietyProtocolBadges,
   TransferBatch,
   TransferSingle,
   URI,
 } from "../generated/SocietyProtocolBadges/SocietyProtocolBadges";
 
-export function loadOrCreateBadge(badgeId: string, timestamp: BigInt): Badge {
+const findOrCreateUser = (userId: string): User => {
+  let user = User.load(userId);
+
+  if (user == null) {
+    user = new User(userId);
+    user.badges = [];
+    user.managedBadges = [];
+    user.save();
+  }
+
+  return user;
+};
+
+const findOrCreateBadge = (badgeId: string, creator: string): Badge => {
   let badge = Badge.load(badgeId);
 
   if (badge == null) {
+    const createdByUser = findOrCreateUser(creator);
     badge = new Badge(badgeId);
-    badge.createdAt = timestamp;
-    badge.hookAddress = new Bytes(0);
+    badge.creatorAddress = creator;
+    badge.createdBy = createdByUser.id;
     badge.name = "";
     badge.isOfficial = false;
+    badge.isCommunity = false;
+    badge.hookAddress = new Bytes(0);
+    badge.createdAt = BigInt.zero();
     badge.uri = "";
+    badge.holdersCount = BigInt.zero();
 
     badge.save();
   }
 
   return badge;
-}
+};
+
+const getImageUrlFromMetadata = (uri: string | null): string | null => {
+  if (uri !== null && uri.includes("/ipfs/")) {
+    const parts = uri.split("/ipfs/");
+    if (parts.length > 1) {
+      const hash = parts[parts.length - 1];
+
+      const metadata = ipfs.cat(hash);
+
+      if (metadata !== null) {
+        const jsonData = json.fromBytes(metadata).toObject();
+
+        const imageUrl = jsonData.get("imageUrl");
+
+        if (imageUrl !== null) {
+          return imageUrl.toString();
+        }
+      }
+    }
+  }
+  return null;
+};
 
 export function handleBadgeCreated(event: BadgeCreated): void {
-  const badge = new Badge(event.params.id.toString());
+  const badge = findOrCreateBadge(
+    event.params.id.toString(),
+    event.params.creator.toHexString(),
+  );
 
+  const createdByUser = findOrCreateUser(event.params.creator.toHexString());
+
+  badge.creatorAddress = event.params.creator.toHexString();
+  badge.createdBy = createdByUser.id;
   badge.name = event.params.name;
   badge.isOfficial = event.params.isOfficial;
+  badge.isCommunity = event.params.isCommunity;
   badge.hookAddress = new Bytes(0);
   badge.createdAt = event.block.timestamp;
-  badge.uri = "";
+
+  const contract = SocietyProtocolBadges.bind(event.address);
+
+  const uriResult = contract.try_uri(event.params.id);
+
+  if (!uriResult.reverted) {
+    badge.uri = uriResult.value;
+  } else {
+    badge.uri = "";
+  }
+
+  badge.imageUrl = getImageUrlFromMetadata(badge.uri);
+
   badge.save();
 }
 
@@ -50,11 +119,7 @@ export function handleHookUpdated(event: HookUpdated): void {
 export function handleProfileCreated(event: ProfileCreated): void {
   const userId = event.params.user;
 
-  const user = User.load(userId.toHexString());
-
-  if (user == null) {
-    return;
-  }
+  const user = findOrCreateUser(userId.toHexString());
 
   const badge = Badge.load(event.params.id.toString());
 
@@ -73,14 +138,17 @@ export function handleURI(event: URI): void {
   }
 
   badge.uri = event.params.value;
+
+  badge.imageUrl = getImageUrlFromMetadata(event.params.value);
+
   badge.save();
 }
 
 export function mint(badgeId: BigInt, userId: Address, value: BigInt): void {
   const badge = Badge.load(badgeId.toString());
-  const user = User.load(userId.toHexString());
+  const user = findOrCreateUser(userId.toHexString());
 
-  if (badge == null || user == null) {
+  if (badge == null) {
     return;
   }
   const alreadyHasBadge = user.badges.indexOf(badge.id) >= 0;
@@ -88,17 +156,24 @@ export function mint(badgeId: BigInt, userId: Address, value: BigInt): void {
   if (alreadyHasBadge) {
     return;
   }
-  user.badges = user.badges.concat([badge.id]);
+
+  const updatedBadges = user.badges;
+  updatedBadges.push(badge.id);
+  user.badges = updatedBadges;
   user.save();
+
+  badge.holdersCount = badge.holdersCount.plus(BigInt.fromI32(1));
+  badge.save();
 }
 
 export function burn(badgeId: BigInt, userId: Address, value: BigInt): void {
   const badge = Badge.load(badgeId.toString());
-  const user = User.load(userId.toHexString());
+  const user = findOrCreateUser(userId.toHexString());
 
-  if (badge == null || user == null) {
+  if (badge == null) {
     return;
   }
+
   const badgeIndex = user.badges.indexOf(badge.id);
 
   if (badgeIndex >= 0) {
@@ -106,6 +181,9 @@ export function burn(badgeId: BigInt, userId: Address, value: BigInt): void {
     updatedBadges.splice(badgeIndex, 1);
     user.badges = updatedBadges;
     user.save();
+
+    badge.holdersCount = badge.holdersCount.minus(BigInt.fromI32(1));
+    badge.save();
   }
 }
 
@@ -113,13 +191,13 @@ export function transfer(
   badgeId: BigInt,
   fromUserId: Address,
   toUserId: Address,
-  value: BigInt
+  value: BigInt,
 ): void {
   const badge = Badge.load(badgeId.toString());
-  const fromUser = User.load(fromUserId.toHexString());
-  const toUser = User.load(toUserId.toHexString());
+  const fromUser = findOrCreateUser(fromUserId.toHexString());
+  const toUser = findOrCreateUser(toUserId.toHexString());
 
-  if (badge == null || fromUser == null || toUser == null) {
+  if (badge == null) {
     return;
   }
 
@@ -138,7 +216,9 @@ export function transfer(
     return;
   }
 
-  toUser.badges = toUser.badges.concat([badge.id]);
+  const updatedBadges = toUser.badges;
+  updatedBadges.push(badge.id);
+  toUser.badges = updatedBadges;
   toUser.save();
 }
 
@@ -165,7 +245,7 @@ export function handleTransferSingle(event: TransferSingle): void {
       event.params.id,
       event.params.from,
       event.params.to,
-      event.params.value
+      event.params.value,
     );
   }
 }
@@ -188,5 +268,32 @@ export function handleTransferBatch(event: TransferBatch): void {
     else {
       transfer(badgeId, from, to, event.params.values[i]);
     }
+  }
+}
+
+export function handleEditorsUpdated(event: EditorsUpdated): void {
+  const badge = findOrCreateBadge(
+    event.params.id.toString(),
+    event.transaction.from.toHexString(),
+  );
+
+  const manager = findOrCreateUser(event.params.editor.toHexString());
+
+  if (event.params.isAllowed) {
+    if (!manager.managedBadges.includes(badge.id)) {
+      const updatedBadges = manager.managedBadges;
+      updatedBadges.push(badge.id);
+      manager.managedBadges = updatedBadges;
+      manager.save();
+    }
+  } else {
+    const index = manager.managedBadges.indexOf(badge.id);
+    if (index < 0) {
+      return;
+    }
+    const updatedBadges = manager.managedBadges;
+    updatedBadges.splice(index, 1);
+    manager.managedBadges = updatedBadges;
+    manager.save();
   }
 }

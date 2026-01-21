@@ -1,4 +1,7 @@
-specVersion: 0.0.2
+specVersion: 0.0.4
+features:
+  - fullTextSearch
+  - ipfsOnEthereumContracts
 schema:
   file: ./schema.graphql
 dataSources:
@@ -16,16 +19,16 @@ dataSources:
       entities:
         - BadgeCreated
         - HookUpdated
-        - PermissionsUpdated
         - ProfileCreated
-        - RoleAdminChanged
-        - RoleGranted
-        - RoleRevoked
+        - URI
+        - TransferSingle
+        - TransferBatch
+        - EditorsUpdated
       abis:
         - name: SocietyProtocolBadges
           file: ./abis/SocietyProtocolBadges.json
       eventHandlers:
-        - event: BadgeCreated(indexed uint256,string,bool)
+        - event: BadgeCreated(indexed uint256,string,bool,bool,indexed address)
           handler: handleBadgeCreated
         - event: HookUpdated(indexed uint256,indexed address)
           handler: handleHookUpdated
@@ -37,6 +40,8 @@ dataSources:
           handler: handleTransferSingle
         - event: TransferBatch(indexed address,indexed address,indexed address,uint256[],uint256[])
           handler: handleTransferBatch
+        - event: EditorsUpdated(indexed uint256,indexed address,bool)
+          handler: handleEditorsUpdated
       file: ./src/society-protocol-badges.ts
   - kind: ethereum
     name: EasyAuction
