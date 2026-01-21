@@ -19,11 +19,10 @@ dataSources:
       entities:
         - BadgeCreated
         - HookUpdated
-        - PermissionsUpdated
         - ProfileCreated
-        - RoleAdminChanged
-        - RoleGranted
-        - RoleRevoked
+        - URI
+        - TransferSingle
+        - TransferBatch
         - EditorsUpdated
       abis:
         - name: SocietyProtocolBadges

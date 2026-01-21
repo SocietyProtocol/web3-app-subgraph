@@ -58,16 +58,13 @@ const getImageUrlFromMetadata = (uri: string | null): string | null => {
     const parts = uri.split("/ipfs/");
     if (parts.length > 1) {
       const hash = parts[parts.length - 1];
-      log.info("IPFS Hash: {}", [hash]);
-      const metadata = ipfs.cat(hash);
 
-      log.info("Metadata: {}", [metadata ? metadata.toString() : "null"]);
+      const metadata = ipfs.cat(hash);
 
       if (metadata !== null) {
         const jsonData = json.fromBytes(metadata).toObject();
 
         const imageUrl = jsonData.get("imageUrl");
-        log.info("Image URL: {}", [imageUrl ? imageUrl.toString() : "null"]);
 
         if (imageUrl !== null) {
           return imageUrl.toString();
@@ -282,18 +279,12 @@ export function handleEditorsUpdated(event: EditorsUpdated): void {
 
   const manager = findOrCreateUser(event.params.editor.toHexString());
 
-  log.info("Updating editor {} for badge {}: isAllowed={}", [
-    manager.id,
-    badge.id,
-    event.params.isAllowed.toString(),
-  ]);
-
   if (event.params.isAllowed) {
     if (!manager.managedBadges.includes(badge.id)) {
       const updatedBadges = manager.managedBadges;
       updatedBadges.push(badge.id);
       manager.managedBadges = updatedBadges;
-      log.info("Added manager {} to badge {}", [manager.id, badge.id]);
+      manager.save();
     }
   } else {
     const index = manager.managedBadges.indexOf(badge.id);
@@ -303,8 +294,6 @@ export function handleEditorsUpdated(event: EditorsUpdated): void {
     const updatedBadges = manager.managedBadges;
     updatedBadges.splice(index, 1);
     manager.managedBadges = updatedBadges;
-    log.info("Removed manager {} from badge {}", [manager.id, badge.id]);
+    manager.save();
   }
-
-  manager.save();
 }
