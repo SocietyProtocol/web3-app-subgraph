@@ -81,12 +81,12 @@ const getImageUrlFromMetadata = (uri: string | null): string | null => {
 export function handleBadgeCreated(event: BadgeCreated): void {
   const badge = findOrCreateBadge(
     event.params.id.toString(),
-    event.transaction.from.toHexString(),
+    event.params.creator.toHexString(),
   );
 
-  const createdByUser = findOrCreateUser(event.transaction.from.toHexString());
+  const createdByUser = findOrCreateUser(event.params.creator.toHexString());
 
-  badge.creatorAddress = event.transaction.from.toHexString();
+  badge.creatorAddress = event.params.creator.toHexString();
   badge.createdBy = createdByUser.id;
   badge.name = event.params.name;
   badge.isOfficial = event.params.isOfficial;
