@@ -24,6 +24,7 @@ dataSources:
         - RoleAdminChanged
         - RoleGranted
         - RoleRevoked
+        - EditorsUpdated
       abis:
         - name: SocietyProtocolBadges
           file: ./abis/SocietyProtocolBadges.json
@@ -40,6 +41,8 @@ dataSources:
           handler: handleTransferSingle
         - event: TransferBatch(indexed address,indexed address,indexed address,uint256[],uint256[])
           handler: handleTransferBatch
+        - event: EditorsUpdated(indexed uint256,indexed address,bool)
+          handler: handleEditorsUpdated
       file: ./src/society-protocol-badges.ts
   - kind: ethereum
     name: EasyAuction

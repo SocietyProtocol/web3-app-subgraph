@@ -2,6 +2,7 @@ type User @entity(immutable: false) {
   id: ID!
   profile: Badge
   badges: [Badge!]!
+  managedBadges: [Badge!]!
 }
 
 type Badge @entity(immutable: false) {
@@ -11,11 +12,13 @@ type Badge @entity(immutable: false) {
   isCommunity: Boolean!
   uri: String
   hookAddress: Bytes!
-  holders: [User!]! @derivedFrom(field: "badges")
   creatorAddress: String!
-  createdBy: User!
   createdAt: BigInt!
   imageUrl: String
+  createdBy: User!
+  managers: [User!]! @derivedFrom(field: "managedBadges")
+  holders: [User!]! @derivedFrom(field: "badges")
+  holdersCount: BigInt!
 }
 
 type _Schema_

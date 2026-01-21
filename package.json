@@ -4,7 +4,7 @@
   "scripts": {
     "prepare:mainnet": "node scripts/prepare.js mainnet",
     "prepare:sepolia": "node scripts/prepare.js sepolia",
-    "codegen": "graph codegen",
+    "codegen": "yarn run prepare:sepolia && graph codegen",
     "build": "graph build",
     "deploy": "yarn run prepare:mainnet && graph codegen && graph build && graph deploy --node https://api.studio.thegraph.com/deploy/ society-mainnet",
     "deploy:testnet": "yarn run prepare:sepolia && graph codegen && graph build && graph deploy --node https://api.studio.thegraph.com/deploy/ society-testnet",

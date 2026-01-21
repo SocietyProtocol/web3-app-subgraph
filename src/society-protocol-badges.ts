@@ -9,6 +9,7 @@ import {
 import { Badge, User } from "../generated/schema";
 import {
   BadgeCreated,
+  EditorsUpdated,
   HookUpdated,
   ProfileCreated,
   SocietyProtocolBadges,
@@ -23,10 +24,33 @@ const findOrCreateUser = (userId: string): User => {
   if (user == null) {
     user = new User(userId);
     user.badges = [];
+    user.managedBadges = [];
     user.save();
   }
 
   return user;
+};
+
+const findOrCreateBadge = (badgeId: string, creator: string): Badge => {
+  let badge = Badge.load(badgeId);
+
+  if (badge == null) {
+    const createdByUser = findOrCreateUser(creator);
+    badge = new Badge(badgeId);
+    badge.creatorAddress = creator;
+    badge.createdBy = createdByUser.id;
+    badge.name = "";
+    badge.isOfficial = false;
+    badge.isCommunity = false;
+    badge.hookAddress = new Bytes(0);
+    badge.createdAt = BigInt.zero();
+    badge.uri = "";
+    badge.holdersCount = BigInt.zero();
+
+    badge.save();
+  }
+
+  return badge;
 };
 
 const getImageUrlFromMetadata = (uri: string | null): string | null => {
@@ -55,7 +79,10 @@ const getImageUrlFromMetadata = (uri: string | null): string | null => {
 };
 
 export function handleBadgeCreated(event: BadgeCreated): void {
-  const badge = new Badge(event.params.id.toString());
+  const badge = findOrCreateBadge(
+    event.params.id.toString(),
+    event.transaction.from.toHexString(),
+  );
 
   const createdByUser = findOrCreateUser(event.transaction.from.toHexString());
 
@@ -132,8 +159,14 @@ export function mint(badgeId: BigInt, userId: Address, value: BigInt): void {
   if (alreadyHasBadge) {
     return;
   }
-  user.badges = user.badges.concat([badge.id]);
+
+  const updatedBadges = user.badges;
+  updatedBadges.push(badge.id);
+  user.badges = updatedBadges;
   user.save();
+
+  badge.holdersCount = badge.holdersCount.plus(BigInt.fromI32(1));
+  badge.save();
 }
 
 export function burn(badgeId: BigInt, userId: Address, value: BigInt): void {
@@ -143,6 +176,7 @@ export function burn(badgeId: BigInt, userId: Address, value: BigInt): void {
   if (badge == null) {
     return;
   }
+
   const badgeIndex = user.badges.indexOf(badge.id);
 
   if (badgeIndex >= 0) {
@@ -150,6 +184,9 @@ export function burn(badgeId: BigInt, userId: Address, value: BigInt): void {
     updatedBadges.splice(badgeIndex, 1);
     user.badges = updatedBadges;
     user.save();
+
+    badge.holdersCount = badge.holdersCount.minus(BigInt.fromI32(1));
+    badge.save();
   }
 }
 
@@ -182,7 +219,9 @@ export function transfer(
     return;
   }
 
-  toUser.badges = toUser.badges.concat([badge.id]);
+  const updatedBadges = toUser.badges;
+  updatedBadges.push(badge.id);
+  toUser.badges = updatedBadges;
   toUser.save();
 }
 
@@ -233,4 +272,39 @@ export function handleTransferBatch(event: TransferBatch): void {
       transfer(badgeId, from, to, event.params.values[i]);
     }
   }
+}
+
+export function handleEditorsUpdated(event: EditorsUpdated): void {
+  const badge = findOrCreateBadge(
+    event.params.id.toString(),
+    event.transaction.from.toHexString(),
+  );
+
+  const manager = findOrCreateUser(event.params.editor.toHexString());
+
+  log.info("Updating editor {} for badge {}: isAllowed={}", [
+    manager.id,
+    badge.id,
+    event.params.isAllowed.toString(),
+  ]);
+
+  if (event.params.isAllowed) {
+    if (!manager.managedBadges.includes(badge.id)) {
+      const updatedBadges = manager.managedBadges;
+      updatedBadges.push(badge.id);
+      manager.managedBadges = updatedBadges;
+      log.info("Added manager {} to badge {}", [manager.id, badge.id]);
+    }
+  } else {
+    const index = manager.managedBadges.indexOf(badge.id);
+    if (index < 0) {
+      return;
+    }
+    const updatedBadges = manager.managedBadges;
+    updatedBadges.splice(index, 1);
+    manager.managedBadges = updatedBadges;
+    log.info("Removed manager {} from badge {}", [manager.id, badge.id]);
+  }
+
+  manager.save();
 }
