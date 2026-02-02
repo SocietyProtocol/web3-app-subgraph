@@ -4,11 +4,14 @@ import {
   Bytes,
   ipfs,
   json,
+  JSONValue,
   log,
+  TypedMap,
 } from "@graphprotocol/graph-ts";
 import { Badge, User } from "../generated/schema";
 import {
   BadgeCreated,
+  BadgePermissions,
   EditorsUpdated,
   HookUpdated,
   ProfileCreated,
@@ -17,19 +20,7 @@ import {
   TransferSingle,
   URI,
 } from "../generated/SocietyProtocolBadges/SocietyProtocolBadges";
-
-const findOrCreateUser = (userId: string): User => {
-  let user = User.load(userId);
-
-  if (user == null) {
-    user = new User(userId);
-    user.badges = [];
-    user.managedBadges = [];
-    user.save();
-  }
-
-  return user;
-};
+import { findOrCreateUser } from "./user";
 
 const findOrCreateBadge = (badgeId: string, creator: string): Badge => {
   let badge = Badge.load(badgeId);
@@ -46,6 +37,9 @@ const findOrCreateBadge = (badgeId: string, creator: string): Badge => {
     badge.createdAt = BigInt.zero();
     badge.uri = "";
     badge.holdersCount = BigInt.zero();
+    badge.minters = [];
+    badge.burners = [];
+    badge.transferers = [];
 
     badge.save();
   }
@@ -53,7 +47,9 @@ const findOrCreateBadge = (badgeId: string, creator: string): Badge => {
   return badge;
 };
 
-const getImageUrlFromMetadata = (uri: string | null): string | null => {
+const getIpfsJson = (
+  uri: string | null,
+): TypedMap<string, JSONValue> | null => {
   if (uri !== null && uri.includes("/ipfs/")) {
     const parts = uri.split("/ipfs/");
     if (parts.length > 1) {
@@ -62,20 +58,32 @@ const getImageUrlFromMetadata = (uri: string | null): string | null => {
       const metadata = ipfs.cat(hash);
 
       if (metadata !== null) {
-        const jsonData = json.fromBytes(metadata).toObject();
-
-        const imageUrl = jsonData.get("imageUrl");
-
-        if (imageUrl !== null) {
-          return imageUrl.toString();
-        }
+        return json.fromBytes(metadata).toObject();
       }
     }
   }
+
+  return null;
+};
+
+const getImageUrlFromIpfsUri = (uri: string | null): string | null => {
+  const metadata = getIpfsJson(uri);
+
+  if (metadata !== null) {
+    const imageUrl = metadata.get("imageUrl");
+
+    if (imageUrl !== null) {
+      return imageUrl.toString();
+    }
+  }
+
   return null;
 };
 
 export function handleBadgeCreated(event: BadgeCreated): void {
+  log.info("Handling BadgeCreated for badge ID: {}", [
+    event.params.id.toString(),
+  ]);
   const badge = findOrCreateBadge(
     event.params.id.toString(),
     event.params.creator.toHexString(),
@@ -101,12 +109,15 @@ export function handleBadgeCreated(event: BadgeCreated): void {
     badge.uri = "";
   }
 
-  badge.imageUrl = getImageUrlFromMetadata(badge.uri);
+  badge.imageUrl = getImageUrlFromIpfsUri(badge.uri);
 
   badge.save();
 }
 
 export function handleHookUpdated(event: HookUpdated): void {
+  log.info("Handling HookUpdated for badge ID: {}", [
+    event.params.id.toString(),
+  ]);
   const badge = Badge.load(event.params.id.toString());
   if (badge == null) {
     return;
@@ -117,6 +128,9 @@ export function handleHookUpdated(event: HookUpdated): void {
 }
 
 export function handleProfileCreated(event: ProfileCreated): void {
+  log.info("Handling ProfileCreated for user: {}", [
+    event.params.user.toHexString(),
+  ]);
   const userId = event.params.user;
 
   const user = findOrCreateUser(userId.toHexString());
@@ -128,10 +142,34 @@ export function handleProfileCreated(event: ProfileCreated): void {
   }
 
   user.profile = badge.id;
+
+  const metaData = getIpfsJson(badge.uri);
+
+  if (metaData !== null) {
+    const name = metaData.get("name");
+
+    if (name !== null) {
+      user.name = name.toString();
+    }
+
+    const bio = metaData.get("bio");
+
+    if (bio !== null) {
+      user.bio = bio.toString();
+    }
+
+    const imageUrl = metaData.get("imageUrl");
+
+    if (imageUrl !== null) {
+      user.imageUrl = imageUrl.toString();
+    }
+  }
+
   user.save();
 }
 
 export function handleURI(event: URI): void {
+  log.info("Handling URI for badge ID: {}", [event.params.id.toString()]);
   const badge = Badge.load(event.params.id.toString());
   if (badge == null) {
     return;
@@ -139,7 +177,7 @@ export function handleURI(event: URI): void {
 
   badge.uri = event.params.value;
 
-  badge.imageUrl = getImageUrlFromMetadata(event.params.value);
+  badge.imageUrl = getImageUrlFromIpfsUri(event.params.value);
 
   badge.save();
 }
@@ -223,6 +261,9 @@ export function transfer(
 }
 
 export function handleTransferSingle(event: TransferSingle): void {
+  log.info("Handling TransferSingle for badge ID: {}", [
+    event.params.id.toString(),
+  ]);
   // Minting
   if (
     event.params.from.toHexString() ==
@@ -251,6 +292,9 @@ export function handleTransferSingle(event: TransferSingle): void {
 }
 
 export function handleTransferBatch(event: TransferBatch): void {
+  log.info("Handling TransferBatch for badge IDs: {}", [
+    event.params.ids.map<string>((id) => id.toString()).join(", "),
+  ]);
   const from = event.params.from;
   const to = event.params.to;
 
@@ -272,6 +316,9 @@ export function handleTransferBatch(event: TransferBatch): void {
 }
 
 export function handleEditorsUpdated(event: EditorsUpdated): void {
+  log.info("Handling EditorsUpdated for badge ID: {}", [
+    event.params.id.toString(),
+  ]);
   const badge = findOrCreateBadge(
     event.params.id.toString(),
     event.transaction.from.toHexString(),
@@ -296,4 +343,46 @@ export function handleEditorsUpdated(event: EditorsUpdated): void {
     manager.managedBadges = updatedBadges;
     manager.save();
   }
+}
+
+export function handleBadgePermissions(event: BadgePermissions): void {
+  log.info("Handling BadgePermissions for badge ID: {}", [
+    event.params.id.toString(),
+  ]);
+  const badge = findOrCreateBadge(
+    event.params.id.toString(),
+    event.transaction.from.toHexString(),
+  );
+
+  const minters = event.params.minters;
+
+  const mintersList: string[] = [];
+
+  for (let i = 0; i < minters.length; i++) {
+    mintersList.push(minters[i].toString());
+  }
+
+  badge.minters = mintersList;
+
+  const burners = event.params.burners;
+
+  const burnersList: string[] = [];
+
+  for (let i = 0; i < burners.length; i++) {
+    burnersList.push(burners[i].toString());
+  }
+
+  badge.burners = burnersList;
+
+  const transferers = event.params.transferers;
+
+  const transferersList: string[] = [];
+
+  for (let i = 0; i < transferers.length; i++) {
+    transferersList.push(transferers[i].toString());
+  }
+
+  badge.transferers = transferersList;
+
+  badge.save();
 }
