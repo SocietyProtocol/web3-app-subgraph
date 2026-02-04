@@ -5,6 +5,7 @@ import {
   ipfs,
   json,
   JSONValue,
+  JSONValueKind,
   log,
   TypedMap,
 } from "@graphprotocol/graph-ts";
@@ -72,7 +73,7 @@ const getImageUrlFromIpfsUri = (uri: string | null): string | null => {
   if (metadata !== null) {
     const imageUrl = metadata.get("imageUrl");
 
-    if (imageUrl !== null) {
+    if (imageUrl !== null && imageUrl.kind === JSONValueKind.STRING) {
       return imageUrl.toString();
     }
   }
@@ -148,19 +149,19 @@ export function handleProfileCreated(event: ProfileCreated): void {
   if (metaData !== null) {
     const name = metaData.get("name");
 
-    if (name !== null) {
+    if (name !== null && name.kind === JSONValueKind.STRING) {
       user.name = name.toString();
     }
 
     const bio = metaData.get("bio");
 
-    if (bio !== null) {
+    if (bio !== null && bio.kind === JSONValueKind.STRING) {
       user.bio = bio.toString();
     }
 
     const imageUrl = metaData.get("imageUrl");
 
-    if (imageUrl !== null) {
+    if (imageUrl !== null && imageUrl.kind === JSONValueKind.STRING) {
       user.imageUrl = imageUrl.toString();
     }
   }
