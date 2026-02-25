@@ -1,0 +1,8 @@
+{
+  "name": "Invalid Badge",
+  "description": "A badge with array imageUrl",
+  "imageUrl": [
+    "https://example.com/image1.png",
+    "https://example.com/image2.png"
+  ]
+}

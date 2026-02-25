@@ -5,6 +5,7 @@ import {
   describe,
   log,
   test,
+  mockIpfsFile,
 } from "matchstick-as/assembly/index";
 import { Address, BigInt, Bytes } from "@graphprotocol/graph-ts";
 import { Badge, User } from "../../generated/schema";
@@ -19,7 +20,6 @@ import {
 import {
   createBadgeCreatedEvent,
   createHookUpdatedEvent,
-  createPermissionsUpdatedEvent,
   createProfileCreatedEvent,
   createTransferBatchEvent,
   createTransferSingleEvent,
@@ -43,7 +43,7 @@ describe("Society Protocol Badges Mappings", () => {
         badgeId,
         badgeName,
         isOfficial,
-        timestamp
+        timestamp,
       );
 
       handleBadgeCreated(badgeCreatedEvent);
@@ -68,7 +68,7 @@ describe("Society Protocol Badges Mappings", () => {
         badgeId,
         badgeName,
         isOfficial,
-        timestamp
+        timestamp,
       );
 
       handleBadgeCreated(badgeCreatedEvent);
@@ -78,6 +78,88 @@ describe("Society Protocol Badges Mappings", () => {
       assert.fieldEquals("Badge", "2", "isOfficial", "false");
 
       log.success("Non-official badge created successfully", []);
+    });
+
+    test("Should handle IPFS metadata with valid string imageUrl", () => {
+      const badgeId = BigInt.fromI32(3);
+      const badgeName = "IPFS Badge";
+      const isOfficial = true;
+      const timestamp = BigInt.fromI32(1683094251);
+      const ipfsHash = "QmValidHash123";
+
+      // Mock IPFS file with valid string imageUrl
+      mockIpfsFile(ipfsHash, "tests/badges/ipfs-mocks/valid-metadata.json");
+
+      const badgeCreatedEvent = createBadgeCreatedEvent(
+        badgeId,
+        badgeName,
+        isOfficial,
+        timestamp,
+      );
+
+      handleBadgeCreated(badgeCreatedEvent);
+
+      assert.fieldEquals("Badge", "3", "id", "3");
+      assert.fieldEquals("Badge", "3", "name", badgeName);
+
+      log.success("Badge with valid IPFS metadata created successfully", []);
+    });
+
+    test("Should handle IPFS metadata with non-string imageUrl gracefully", () => {
+      const badgeId = BigInt.fromI32(4);
+      const badgeName = "Invalid IPFS Badge";
+      const isOfficial = true;
+      const timestamp = BigInt.fromI32(1683094252);
+      const ipfsHash = "QmInvalidHash456";
+
+      // Mock IPFS file with non-string imageUrl (number)
+      mockIpfsFile(
+        ipfsHash,
+        "tests/badges/ipfs-mocks/invalid-metadata-number.json",
+      );
+
+      const badgeCreatedEvent = createBadgeCreatedEvent(
+        badgeId,
+        badgeName,
+        isOfficial,
+        timestamp,
+      );
+
+      handleBadgeCreated(badgeCreatedEvent);
+
+      assert.fieldEquals("Badge", "4", "id", "4");
+      assert.fieldEquals("Badge", "4", "name", badgeName);
+      // imageUrl should be null since the JSON value wasn't a string
+
+      log.success("Badge with invalid IPFS metadata handled gracefully", []);
+    });
+
+    test("Should handle IPFS metadata with object imageUrl gracefully", () => {
+      const badgeId = BigInt.fromI32(5);
+      const badgeName = "Object IPFS Badge";
+      const isOfficial = true;
+      const timestamp = BigInt.fromI32(1683094253);
+      const ipfsHash = "QmObjectHash789";
+
+      // Mock IPFS file with object imageUrl
+      mockIpfsFile(
+        ipfsHash,
+        "tests/badges/ipfs-mocks/invalid-metadata-object.json",
+      );
+
+      const badgeCreatedEvent = createBadgeCreatedEvent(
+        badgeId,
+        badgeName,
+        isOfficial,
+        timestamp,
+      );
+
+      handleBadgeCreated(badgeCreatedEvent);
+
+      assert.fieldEquals("Badge", "5", "id", "5");
+      assert.fieldEquals("Badge", "5", "name", badgeName);
+
+      log.success("Badge with object IPFS metadata handled gracefully", []);
     });
   });
 
@@ -93,11 +175,11 @@ describe("Society Protocol Badges Mappings", () => {
       badge.save();
 
       const hookAddress = Address.fromString(
-        "0x1234567890123456789012345678901234567890"
+        "0x1234567890123456789012345678901234567890",
       );
       const hookUpdatedEvent = createHookUpdatedEvent(
         BigInt.fromI32(1),
-        hookAddress
+        hookAddress,
       );
 
       handleHookUpdated(hookUpdatedEvent);
@@ -106,7 +188,7 @@ describe("Society Protocol Badges Mappings", () => {
         "Badge",
         "1",
         "hookAddress",
-        "0x1234567890123456789012345678901234567890"
+        "0x1234567890123456789012345678901234567890",
       );
 
       log.success("Hook address updated successfully", []);
@@ -114,11 +196,11 @@ describe("Society Protocol Badges Mappings", () => {
 
     test("Should not fail when updating non-existent badge", () => {
       const hookAddress = Address.fromString(
-        "0x1234567890123456789012345678901234567890"
+        "0x1234567890123456789012345678901234567890",
       );
       const hookUpdatedEvent = createHookUpdatedEvent(
         BigInt.fromI32(999),
-        hookAddress
+        hookAddress,
       );
 
       handleHookUpdated(hookUpdatedEvent);
@@ -143,7 +225,7 @@ describe("Society Protocol Badges Mappings", () => {
 
       // Create a user
       const userAddress = Address.fromString(
-        "0x5eA1474CeFA1ea5986327F97932B587deD802CF7"
+        "0x5eA1474CeFA1ea5986327F97932B587deD802CF7",
       );
       const user = new User(userAddress.toHexString());
       user.badges = new Array();
@@ -151,7 +233,7 @@ describe("Society Protocol Badges Mappings", () => {
 
       const profileCreatedEvent = createProfileCreatedEvent(
         BigInt.fromI32(1),
-        userAddress
+        userAddress,
       );
 
       handleProfileCreated(profileCreatedEvent);
@@ -172,17 +254,163 @@ describe("Society Protocol Badges Mappings", () => {
       badge.save();
 
       const userAddress = Address.fromString(
-        "0x9999999999999999999999999999999999999999"
+        "0x9999999999999999999999999999999999999999",
       );
       const profileCreatedEvent = createProfileCreatedEvent(
         BigInt.fromI32(1),
-        userAddress
+        userAddress,
       );
 
       handleProfileCreated(profileCreatedEvent);
 
       // Should not crash
       log.success("Handled non-existent user gracefully", []);
+    });
+
+    test("Should parse valid IPFS profile metadata with string fields", () => {
+      const ipfsHash = "QmProfileHash123";
+      const badge = new Badge("10");
+      badge.name = "Profile Badge";
+      badge.isOfficial = true;
+      badge.hookAddress = new Bytes(0);
+      badge.createdAt = BigInt.fromI32(1683094249);
+      badge.uri = `ipfs://${ipfsHash}`;
+      badge.save();
+
+      // Mock IPFS file with valid profile metadata
+      mockIpfsFile(
+        ipfsHash,
+        "tests/badges/ipfs-mocks/valid-profile-metadata.json",
+      );
+
+      const userAddress = Address.fromString(
+        "0x5eA1474CeFA1ea5986327F97932B587deD802CF7",
+      );
+      const user = new User(userAddress.toHexString());
+      user.badges = new Array();
+      user.save();
+
+      const profileCreatedEvent = createProfileCreatedEvent(
+        BigInt.fromI32(10),
+        userAddress,
+      );
+
+      handleProfileCreated(profileCreatedEvent);
+
+      assert.fieldEquals("User", userAddress.toHexString(), "profile", "10");
+
+      log.success(
+        "Profile metadata parsed successfully with valid strings",
+        [],
+      );
+    });
+
+    test("Should handle IPFS profile metadata with non-string name field", () => {
+      const ipfsHash = "QmInvalidProfileName";
+      const badge = new Badge("11");
+      badge.name = "Profile Badge";
+      badge.isOfficial = true;
+      badge.hookAddress = new Bytes(0);
+      badge.createdAt = BigInt.fromI32(1683094249);
+      badge.uri = `ipfs://${ipfsHash}`;
+      badge.save();
+
+      // Mock IPFS file with non-string name
+      mockIpfsFile(
+        ipfsHash,
+        "tests/badges/ipfs-mocks/invalid-profile-name.json",
+      );
+
+      const userAddress = Address.fromString(
+        "0x5eA1474CeFA1ea5986327F97932B587deD802CF7",
+      );
+      const user = new User(userAddress.toHexString());
+      user.badges = new Array();
+      user.save();
+
+      const profileCreatedEvent = createProfileCreatedEvent(
+        BigInt.fromI32(11),
+        userAddress,
+      );
+
+      handleProfileCreated(profileCreatedEvent);
+
+      assert.fieldEquals("User", userAddress.toHexString(), "profile", "11");
+      // Name should not be set since it wasn't a string
+
+      log.success("Invalid profile name type handled gracefully", []);
+    });
+
+    test("Should handle IPFS profile metadata with non-string bio field", () => {
+      const ipfsHash = "QmInvalidProfileBio";
+      const badge = new Badge("12");
+      badge.name = "Profile Badge";
+      badge.isOfficial = true;
+      badge.hookAddress = new Bytes(0);
+      badge.createdAt = BigInt.fromI32(1683094249);
+      badge.uri = `ipfs://${ipfsHash}`;
+      badge.save();
+
+      // Mock IPFS file with non-string bio
+      mockIpfsFile(
+        ipfsHash,
+        "tests/badges/ipfs-mocks/invalid-profile-bio.json",
+      );
+
+      const userAddress = Address.fromString(
+        "0x5eA1474CeFA1ea5986327F97932B587deD802CF7",
+      );
+      const user = new User(userAddress.toHexString());
+      user.badges = new Array();
+      user.save();
+
+      const profileCreatedEvent = createProfileCreatedEvent(
+        BigInt.fromI32(12),
+        userAddress,
+      );
+
+      handleProfileCreated(profileCreatedEvent);
+
+      assert.fieldEquals("User", userAddress.toHexString(), "profile", "12");
+      // Bio should not be set since it wasn't a string
+
+      log.success("Invalid profile bio type handled gracefully", []);
+    });
+
+    test("Should handle IPFS profile metadata with non-string imageUrl field", () => {
+      const ipfsHash = "QmInvalidProfileImage";
+      const badge = new Badge("13");
+      badge.name = "Profile Badge";
+      badge.isOfficial = true;
+      badge.hookAddress = new Bytes(0);
+      badge.createdAt = BigInt.fromI32(1683094249);
+      badge.uri = `ipfs://${ipfsHash}`;
+      badge.save();
+
+      // Mock IPFS file with non-string imageUrl
+      mockIpfsFile(
+        ipfsHash,
+        "tests/badges/ipfs-mocks/invalid-profile-imageurl.json",
+      );
+
+      const userAddress = Address.fromString(
+        "0x5eA1474CeFA1ea5986327F97932B587deD802CF7",
+      );
+      const user = new User(userAddress.toHexString());
+      user.badges = new Array();
+      user.save();
+
+      const profileCreatedEvent = createProfileCreatedEvent(
+        BigInt.fromI32(13),
+        userAddress,
+      );
+
+      handleProfileCreated(profileCreatedEvent);
+
+      assert.fieldEquals("User", userAddress.toHexString(), "profile", "13");
+      // ImageUrl should not be set since it wasn't a string
+
+      log.success("Invalid profile imageUrl type handled gracefully", []);
     });
   });
 
@@ -217,6 +445,33 @@ describe("Society Protocol Badges Mappings", () => {
 
       log.success("Handled non-existent badge gracefully", []);
     });
+
+    test("Should update URI and handle invalid imageUrl type in metadata", () => {
+      const badge = new Badge("14");
+      badge.name = "Test Badge";
+      badge.isOfficial = true;
+      badge.hookAddress = new Bytes(0);
+      badge.createdAt = BigInt.fromI32(1683094249);
+      badge.uri = "";
+      badge.save();
+
+      const ipfsHash = "QmURIInvalidImage";
+      // Mock IPFS file with array as imageUrl
+      mockIpfsFile(
+        ipfsHash,
+        "tests/badges/ipfs-mocks/invalid-metadata-array.json",
+      );
+
+      const uri = `ipfs://${ipfsHash}`;
+      const uriEvent = createURIEvent(BigInt.fromI32(14), uri);
+
+      handleURI(uriEvent);
+
+      assert.fieldEquals("Badge", "14", "uri", uri);
+      // imageUrl should not be set since it wasn't a valid string
+
+      log.success("URI updated with invalid metadata handled gracefully", []);
+    });
   });
 
   describe("handleTransferSingle - Minting", () => {
@@ -232,7 +487,7 @@ describe("Society Protocol Badges Mappings", () => {
 
       // Create a user
       const userAddress = Address.fromString(
-        "0x5eA1474CeFA1ea5986327F97932B587deD802CF7"
+        "0x5eA1474CeFA1ea5986327F97932B587deD802CF7",
       );
       const user = new User(userAddress.toHexString());
       user.badges = new Array();
@@ -242,7 +497,7 @@ describe("Society Protocol Badges Mappings", () => {
         Address.fromString(ZERO_ADDRESS),
         userAddress,
         BigInt.fromI32(1),
-        BigInt.fromI32(1)
+        BigInt.fromI32(1),
       );
 
       handleTransferSingle(transferEvent);
@@ -267,7 +522,7 @@ describe("Society Protocol Badges Mappings", () => {
 
       // Create a user with badge already
       const userAddress = Address.fromString(
-        "0x5eA1474CeFA1ea5986327F97932B587deD802CF7"
+        "0x5eA1474CeFA1ea5986327F97932B587deD802CF7",
       );
       const user = new User(userAddress.toHexString());
       user.badges = ["1"];
@@ -277,7 +532,7 @@ describe("Society Protocol Badges Mappings", () => {
         Address.fromString(ZERO_ADDRESS),
         userAddress,
         BigInt.fromI32(1),
-        BigInt.fromI32(1)
+        BigInt.fromI32(1),
       );
 
       handleTransferSingle(transferEvent);
@@ -303,7 +558,7 @@ describe("Society Protocol Badges Mappings", () => {
 
       // Create a user with badge
       const userAddress = Address.fromString(
-        "0x5eA1474CeFA1ea5986327F97932B587deD802CF7"
+        "0x5eA1474CeFA1ea5986327F97932B587deD802CF7",
       );
       const user = new User(userAddress.toHexString());
       user.badges = ["1"];
@@ -313,7 +568,7 @@ describe("Society Protocol Badges Mappings", () => {
         userAddress,
         Address.fromString(ZERO_ADDRESS),
         BigInt.fromI32(1),
-        BigInt.fromI32(1)
+        BigInt.fromI32(1),
       );
 
       handleTransferSingle(transferEvent);
@@ -337,7 +592,7 @@ describe("Society Protocol Badges Mappings", () => {
 
       // Create a user without badge
       const userAddress = Address.fromString(
-        "0x5eA1474CeFA1ea5986327F97932B587deD802CF7"
+        "0x5eA1474CeFA1ea5986327F97932B587deD802CF7",
       );
       const user = new User(userAddress.toHexString());
       user.badges = new Array();
@@ -347,7 +602,7 @@ describe("Society Protocol Badges Mappings", () => {
         userAddress,
         Address.fromString(ZERO_ADDRESS),
         BigInt.fromI32(1),
-        BigInt.fromI32(1)
+        BigInt.fromI32(1),
       );
 
       handleTransferSingle(transferEvent);
@@ -373,7 +628,7 @@ describe("Society Protocol Badges Mappings", () => {
 
       // Create from user with badge
       const fromAddress = Address.fromString(
-        "0x5eA1474CeFA1ea5986327F97932B587deD802CF7"
+        "0x5eA1474CeFA1ea5986327F97932B587deD802CF7",
       );
       const fromUser = new User(fromAddress.toHexString());
       fromUser.badges = ["1"];
@@ -381,7 +636,7 @@ describe("Society Protocol Badges Mappings", () => {
 
       // Create to user without badge
       const toAddress = Address.fromString(
-        "0xf3dBd9F4C902c7183E0fd22bFdbAF5ed330845c4"
+        "0xf3dBd9F4C902c7183E0fd22bFdbAF5ed330845c4",
       );
       const toUser = new User(toAddress.toHexString());
       toUser.badges = new Array();
@@ -391,7 +646,7 @@ describe("Society Protocol Badges Mappings", () => {
         fromAddress,
         toAddress,
         BigInt.fromI32(1),
-        BigInt.fromI32(1)
+        BigInt.fromI32(1),
       );
 
       handleTransferSingle(transferEvent);
@@ -420,7 +675,7 @@ describe("Society Protocol Badges Mappings", () => {
 
       // Create from user with badge
       const fromAddress = Address.fromString(
-        "0x5eA1474CeFA1ea5986327F97932B587deD802CF7"
+        "0x5eA1474CeFA1ea5986327F97932B587deD802CF7",
       );
       const fromUser = new User(fromAddress.toHexString());
       fromUser.badges = ["1"];
@@ -428,7 +683,7 @@ describe("Society Protocol Badges Mappings", () => {
 
       // Create to user also with badge
       const toAddress = Address.fromString(
-        "0xf3dBd9F4C902c7183E0fd22bFdbAF5ed330845c4"
+        "0xf3dBd9F4C902c7183E0fd22bFdbAF5ed330845c4",
       );
       const toUser = new User(toAddress.toHexString());
       toUser.badges = ["1"];
@@ -438,7 +693,7 @@ describe("Society Protocol Badges Mappings", () => {
         fromAddress,
         toAddress,
         BigInt.fromI32(1),
-        BigInt.fromI32(1)
+        BigInt.fromI32(1),
       );
 
       handleTransferSingle(transferEvent);
@@ -476,7 +731,7 @@ describe("Society Protocol Badges Mappings", () => {
 
       // Create a user
       const userAddress = Address.fromString(
-        "0x5eA1474CeFA1ea5986327F97932B587deD802CF7"
+        "0x5eA1474CeFA1ea5986327F97932B587deD802CF7",
       );
       const user = new User(userAddress.toHexString());
       user.badges = new Array();
@@ -486,7 +741,7 @@ describe("Society Protocol Badges Mappings", () => {
         Address.fromString(ZERO_ADDRESS),
         userAddress,
         [BigInt.fromI32(1), BigInt.fromI32(2)],
-        [BigInt.fromI32(1), BigInt.fromI32(1)]
+        [BigInt.fromI32(1), BigInt.fromI32(1)],
       );
 
       handleTransferBatch(transferBatchEvent);
@@ -520,7 +775,7 @@ describe("Society Protocol Badges Mappings", () => {
 
       // Create a user with badges
       const userAddress = Address.fromString(
-        "0x5eA1474CeFA1ea5986327F97932B587deD802CF7"
+        "0x5eA1474CeFA1ea5986327F97932B587deD802CF7",
       );
       const user = new User(userAddress.toHexString());
       user.badges = ["1", "2"];
@@ -530,7 +785,7 @@ describe("Society Protocol Badges Mappings", () => {
         userAddress,
         Address.fromString(ZERO_ADDRESS),
         [BigInt.fromI32(1), BigInt.fromI32(2)],
-        [BigInt.fromI32(1), BigInt.fromI32(1)]
+        [BigInt.fromI32(1), BigInt.fromI32(1)],
       );
 
       handleTransferBatch(transferBatchEvent);
@@ -562,7 +817,7 @@ describe("Society Protocol Badges Mappings", () => {
 
       // Create from user with badges
       const fromAddress = Address.fromString(
-        "0x5eA1474CeFA1ea5986327F97932B587deD802CF7"
+        "0x5eA1474CeFA1ea5986327F97932B587deD802CF7",
       );
       const fromUser = new User(fromAddress.toHexString());
       fromUser.badges = ["1", "2"];
@@ -570,7 +825,7 @@ describe("Society Protocol Badges Mappings", () => {
 
       // Create to user without badges
       const toAddress = Address.fromString(
-        "0xf3dBd9F4C902c7183E0fd22bFdbAF5ed330845c4"
+        "0xf3dBd9F4C902c7183E0fd22bFdbAF5ed330845c4",
       );
       const toUser = new User(toAddress.toHexString());
       toUser.badges = new Array();
@@ -580,7 +835,7 @@ describe("Society Protocol Badges Mappings", () => {
         fromAddress,
         toAddress,
         [BigInt.fromI32(1), BigInt.fromI32(2)],
-        [BigInt.fromI32(1), BigInt.fromI32(1)]
+        [BigInt.fromI32(1), BigInt.fromI32(1)],
       );
 
       handleTransferBatch(transferBatchEvent);

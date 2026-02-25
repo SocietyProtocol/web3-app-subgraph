@@ -1,0 +1,5 @@
+{
+  "name": "Invalid Badge",
+  "description": "A badge with numeric imageUrl",
+  "imageUrl": 12345
+}
