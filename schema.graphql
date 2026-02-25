@@ -5,26 +5,26 @@ type User @entity(immutable: false) {
   imageUrl: String
   profile: Badge
   badges: [Badge!]!
-  managedBadges: [Badge!]!
+  managedBadges: [Badge!]
 }
 
 type Badge @entity(immutable: false) {
   id: ID!
   name: String!
   isOfficial: Boolean!
-  isCommunity: Boolean!
+  isCommunity: Boolean
   uri: String
-  hookAddress: Bytes!
-  creatorAddress: String!
-  createdAt: BigInt!
+  hookAddress: Bytes
+  creatorAddress: String
+  createdAt: BigInt
   imageUrl: String
-  createdBy: User!
+  createdBy: User
   managers: [User!]! @derivedFrom(field: "managedBadges")
-  minters: [Badge!]!
-  burners: [Badge!]!
-  transferers: [Badge!]!
+  minters: [String!]
+  burners: [String!]
+  transferers: [String!]
   holders: [User!]! @derivedFrom(field: "badges")
-  holdersCount: BigInt!
+  holdersCount: BigInt
 }
 
 type _Schema_

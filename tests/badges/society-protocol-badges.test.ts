@@ -86,6 +86,7 @@ describe("Society Protocol Badges Mappings", () => {
       const isOfficial = true;
       const timestamp = BigInt.fromI32(1683094251);
       const ipfsHash = "QmValidHash123";
+      const ipfsUri = "/ipfs/" + ipfsHash;
 
       // Mock IPFS file with valid string imageUrl
       mockIpfsFile(ipfsHash, "tests/badges/ipfs-mocks/valid-metadata.json");
@@ -95,6 +96,9 @@ describe("Society Protocol Badges Mappings", () => {
         badgeName,
         isOfficial,
         timestamp,
+        false,
+        Address.fromString("0x5eA1474CeFA1ea5986327F97932B587deD802CF7"),
+        ipfsUri,
       );
 
       handleBadgeCreated(badgeCreatedEvent);
@@ -111,6 +115,7 @@ describe("Society Protocol Badges Mappings", () => {
       const isOfficial = true;
       const timestamp = BigInt.fromI32(1683094252);
       const ipfsHash = "QmInvalidHash456";
+      const ipfsUri = "/ipfs/" + ipfsHash;
 
       // Mock IPFS file with non-string imageUrl (number)
       mockIpfsFile(
@@ -123,6 +128,9 @@ describe("Society Protocol Badges Mappings", () => {
         badgeName,
         isOfficial,
         timestamp,
+        false,
+        Address.fromString("0x5eA1474CeFA1ea5986327F97932B587deD802CF7"),
+        ipfsUri,
       );
 
       handleBadgeCreated(badgeCreatedEvent);
@@ -140,6 +148,7 @@ describe("Society Protocol Badges Mappings", () => {
       const isOfficial = true;
       const timestamp = BigInt.fromI32(1683094253);
       const ipfsHash = "QmObjectHash789";
+      const ipfsUri = "/ipfs/" + ipfsHash;
 
       // Mock IPFS file with object imageUrl
       mockIpfsFile(
@@ -152,6 +161,9 @@ describe("Society Protocol Badges Mappings", () => {
         badgeName,
         isOfficial,
         timestamp,
+        false,
+        Address.fromString("0x5eA1474CeFA1ea5986327F97932B587deD802CF7"),
+        ipfsUri,
       );
 
       handleBadgeCreated(badgeCreatedEvent);

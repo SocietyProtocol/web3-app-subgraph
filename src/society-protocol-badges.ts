@@ -59,7 +59,12 @@ const getIpfsJson = (
       const metadata = ipfs.cat(hash);
 
       if (metadata !== null) {
-        return json.fromBytes(metadata).toObject();
+        const parsed = json.fromBytes(metadata);
+        if (parsed.kind === JSONValueKind.OBJECT) {
+          return parsed.toObject();
+        }
+      } else {
+        log.info("No IPFS metadata found for hash: {}", [hash]);
       }
     }
   }
@@ -71,6 +76,7 @@ const getImageUrlFromIpfsUri = (uri: string | null): string | null => {
   const metadata = getIpfsJson(uri);
 
   if (metadata !== null) {
+    log.info("IPFS metadata found for uri: {}", [uri ? uri : "null"]);
     const imageUrl = metadata.get("imageUrl");
 
     if (imageUrl !== null && imageUrl.kind === JSONValueKind.STRING) {

@@ -1,5 +1,8 @@
 import { Address, BigInt, ethereum, Bytes } from "@graphprotocol/graph-ts";
-import { newMockEventWithParams } from "matchstick-as/assembly/index";
+import {
+  createMockedFunction,
+  newMockEventWithParams,
+} from "matchstick-as/assembly/index";
 import {
   BadgeCreated,
   HookUpdated,
@@ -15,12 +18,27 @@ export const societyProtocolBadgesContractAddress = Address.fromString(
   "0x0000000000000000000000000000000000000001",
 );
 
+export const DEFAULT_CREATOR_ADDRESS =
+  "0x5eA1474CeFA1ea5986327F97932B587deD802CF7";
+
 export function createBadgeCreatedEvent(
   id: BigInt,
   name: string,
   isOfficial: boolean,
   timestamp: BigInt,
+  isCommunity: boolean = false,
+  creator: Address = Address.fromString(DEFAULT_CREATOR_ADDRESS),
+  uri: string = "",
 ): BadgeCreated {
+  // Mock the uri(uint256) contract call so handleBadgeCreated can resolve it
+  createMockedFunction(
+    societyProtocolBadgesContractAddress,
+    "uri",
+    "uri(uint256):(string)",
+  )
+    .withArgs([ethereum.Value.fromUnsignedBigInt(id)])
+    .returns([ethereum.Value.fromString(uri)]);
+
   let badgeCreatedEvent = changetype<BadgeCreated>(
     newMockEventWithParams([
       new ethereum.EventParam("id", ethereum.Value.fromUnsignedBigInt(id)),
@@ -29,6 +47,11 @@ export function createBadgeCreatedEvent(
         "isOfficial",
         ethereum.Value.fromBoolean(isOfficial),
       ),
+      new ethereum.EventParam(
+        "isCommunity",
+        ethereum.Value.fromBoolean(isCommunity),
+      ),
+      new ethereum.EventParam("creator", ethereum.Value.fromAddress(creator)),
     ]),
   );
 
