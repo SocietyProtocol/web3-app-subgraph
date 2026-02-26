@@ -51,11 +51,21 @@ const findOrCreateBadge = (badgeId: string, creator: string): Badge => {
 const getIpfsJson = (
   uri: string | null,
 ): TypedMap<string, JSONValue> | null => {
-  if (uri !== null && uri.includes("/ipfs/")) {
-    const parts = uri.split("/ipfs/");
-    if (parts.length > 1) {
-      const hash = parts[parts.length - 1];
+  if (uri !== null) {
+    let hash: string = "";
 
+    if (uri.startsWith("ipfs://")) {
+      // Handle ipfs://QmHash format
+      hash = uri.slice(7);
+    } else if (uri.includes("/ipfs/")) {
+      // Handle /ipfs/QmHash format
+      const parts = uri.split("/ipfs/");
+      if (parts.length > 1) {
+        hash = parts[parts.length - 1];
+      }
+    }
+
+    if (hash.length > 0) {
       const metadata = ipfs.cat(hash);
 
       if (metadata !== null) {
@@ -352,6 +362,14 @@ export function handleEditorsUpdated(event: EditorsUpdated): void {
   }
 }
 
+function bigIntArrayToStringArray(arr: Array<BigInt>): string[] {
+  const result: string[] = [];
+  for (let i = 0; i < arr.length; i++) {
+    result.push(arr[i].toString());
+  }
+  return result;
+}
+
 export function handleBadgePermissions(event: BadgePermissions): void {
   log.info("Handling BadgePermissions for badge ID: {}", [
     event.params.id.toString(),
@@ -361,35 +379,12 @@ export function handleBadgePermissions(event: BadgePermissions): void {
     event.transaction.from.toHexString(),
   );
 
-  const minters = event.params.minters;
+  badge.minters = bigIntArrayToStringArray(event.params.minters);
+  badge.burners = bigIntArrayToStringArray(event.params.burners);
+  badge.transferers = bigIntArrayToStringArray(event.params.transferers);
 
-  const mintersList: string[] = [];
-
-  for (let i = 0; i < minters.length; i++) {
-    mintersList.push(minters[i].toString());
-  }
-
-  badge.minters = mintersList;
-
-  const burners = event.params.burners;
-
-  const burnersList: string[] = [];
-
-  for (let i = 0; i < burners.length; i++) {
-    burnersList.push(burners[i].toString());
-  }
-
-  badge.burners = burnersList;
-
-  const transferers = event.params.transferers;
-
-  const transferersList: string[] = [];
-
-  for (let i = 0; i < transferers.length; i++) {
-    transferersList.push(transferers[i].toString());
-  }
-
-  badge.transferers = transferersList;
+  // Note: event.params.editors is intentionally not stored here as a separate array.
+  // Editor permissions are managed through the EditorsUpdated event handler.
 
   badge.save();
 }

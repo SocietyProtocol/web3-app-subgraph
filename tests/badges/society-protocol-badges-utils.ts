@@ -5,6 +5,7 @@ import {
 } from "matchstick-as/assembly/index";
 import {
   BadgeCreated,
+  BadgePermissions,
   HookUpdated,
   ProfileCreated,
   TransferBatch,
@@ -162,4 +163,38 @@ export function createTransferBatchEvent(
   transferBatchEvent.address = societyProtocolBadgesContractAddress;
 
   return transferBatchEvent;
+}
+
+export function createBadgePermissionsEvent(
+  id: BigInt,
+  minters: Array<BigInt>,
+  transferers: Array<BigInt>,
+  burners: Array<BigInt>,
+  editors: Array<Address> = [],
+): BadgePermissions {
+  let badgePermissionsEvent = changetype<BadgePermissions>(
+    newMockEventWithParams([
+      new ethereum.EventParam("id", ethereum.Value.fromUnsignedBigInt(id)),
+      new ethereum.EventParam(
+        "minters",
+        ethereum.Value.fromUnsignedBigIntArray(minters),
+      ),
+      new ethereum.EventParam(
+        "transferers",
+        ethereum.Value.fromUnsignedBigIntArray(transferers),
+      ),
+      new ethereum.EventParam(
+        "burners",
+        ethereum.Value.fromUnsignedBigIntArray(burners),
+      ),
+      new ethereum.EventParam(
+        "editors",
+        ethereum.Value.fromAddressArray(editors),
+      ),
+    ]),
+  );
+
+  badgePermissionsEvent.address = societyProtocolBadgesContractAddress;
+
+  return badgePermissionsEvent;
 }
