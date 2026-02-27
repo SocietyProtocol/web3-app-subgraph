@@ -34,6 +34,7 @@ const findOrCreateBadge = (badgeId: string, creator: string): Badge => {
     badge.name = "";
     badge.isOfficial = false;
     badge.isCommunity = false;
+    badge.isProfile = false;
     badge.hookAddress = new Bytes(0);
     badge.createdAt = BigInt.zero();
     badge.uri = "";
@@ -113,6 +114,7 @@ export function handleBadgeCreated(event: BadgeCreated): void {
   badge.name = event.params.name;
   badge.isOfficial = event.params.isOfficial;
   badge.isCommunity = event.params.isCommunity;
+  badge.isProfile = false;
   badge.hookAddress = new Bytes(0);
   badge.createdAt = event.block.timestamp;
 
@@ -183,6 +185,9 @@ export function handleProfileCreated(event: ProfileCreated): void {
   }
 
   user.save();
+
+  badge.isProfile = true;
+  badge.save();
 }
 
 export function handleURI(event: URI): void {

@@ -13,6 +13,7 @@ type Badge @entity(immutable: false) {
   name: String!
   isOfficial: Boolean!
   isCommunity: Boolean!
+  isProfile: Boolean!
   uri: String
   hookAddress: Bytes!
   creatorAddress: String!
