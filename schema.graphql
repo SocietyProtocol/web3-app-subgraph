@@ -20,9 +20,9 @@ type Badge @entity(immutable: false) {
   imageUrl: String
   createdBy: User!
   managers: [User!]! @derivedFrom(field: "managedBadges")
-  minters: [String!]!
-  burners: [String!]!
-  transferers: [String!]!
+  minters: [Badge!]!
+  burners: [Badge!]!
+  transferers: [Badge!]!
   holders: [User!]! @derivedFrom(field: "badges")
   holdersCount: BigInt!
 }
