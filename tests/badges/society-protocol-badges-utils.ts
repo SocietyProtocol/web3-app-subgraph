@@ -5,6 +5,7 @@ import {
 } from "matchstick-as/assembly/index";
 import {
   BadgeCreated,
+  BadgeModified,
   BadgePermissions,
   HookUpdated,
   ProfileCreated,
@@ -197,4 +198,35 @@ export function createBadgePermissionsEvent(
   badgePermissionsEvent.address = societyProtocolBadgesContractAddress;
 
   return badgePermissionsEvent;
+}
+
+export function createBadgeModifiedEvent(
+  id: BigInt,
+  name: string,
+  isOfficial: boolean,
+  isCommunity: boolean = false,
+  metadataURI: string = "",
+): BadgeModified {
+  let badgeModifiedEvent = changetype<BadgeModified>(
+    newMockEventWithParams([
+      new ethereum.EventParam("id", ethereum.Value.fromUnsignedBigInt(id)),
+      new ethereum.EventParam("name", ethereum.Value.fromString(name)),
+      new ethereum.EventParam(
+        "isOfficial",
+        ethereum.Value.fromBoolean(isOfficial),
+      ),
+      new ethereum.EventParam(
+        "isCommunity",
+        ethereum.Value.fromBoolean(isCommunity),
+      ),
+      new ethereum.EventParam(
+        "metadataURI",
+        ethereum.Value.fromString(metadataURI),
+      ),
+    ]),
+  );
+
+  badgeModifiedEvent.address = societyProtocolBadgesContractAddress;
+
+  return badgeModifiedEvent;
 }

@@ -18,6 +18,7 @@ dataSources:
       language: wasm/assemblyscript
       entities:
         - BadgeCreated
+        - BadgeModified
         - HookUpdated
         - ProfileCreated
         - URI
@@ -31,6 +32,8 @@ dataSources:
       eventHandlers:
         - event: BadgeCreated(indexed uint256,string,bool,bool,indexed address)
           handler: handleBadgeCreated
+        - event: BadgeModified(indexed uint256,string,bool,bool,string)
+          handler: handleBadgeModified
         - event: HookUpdated(indexed uint256,indexed address)
           handler: handleHookUpdated
         - event: ProfileCreated(indexed address,indexed uint256)

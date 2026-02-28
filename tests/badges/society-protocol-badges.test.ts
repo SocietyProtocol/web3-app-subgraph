@@ -11,6 +11,7 @@ import { Address, BigInt, Bytes } from "@graphprotocol/graph-ts";
 import { Badge, User } from "../../generated/schema";
 import {
   handleBadgeCreated,
+  handleBadgeModified,
   handleBadgePermissions,
   handleHookUpdated,
   handleProfileCreated,
@@ -20,6 +21,7 @@ import {
 } from "../../src/society-protocol-badges";
 import {
   createBadgeCreatedEvent,
+  createBadgeModifiedEvent,
   createBadgePermissionsEvent,
   createHookUpdatedEvent,
   createProfileCreatedEvent,
@@ -868,6 +870,66 @@ describe("Society Protocol Badges Mappings", () => {
         "Badge created and permissions set when badge did not exist",
         [],
       );
+    });
+  });
+
+  describe("handleBadgeModified", () => {
+    test("Should update badge name, isOfficial, isCommunity and uri", () => {
+      createAndSaveBadge("1", "Old Name", true);
+
+      const modifiedEvent = createBadgeModifiedEvent(
+        BigInt.fromI32(1),
+        "New Name",
+        false,
+        true,
+        "",
+      );
+
+      handleBadgeModified(modifiedEvent);
+
+      assert.fieldEquals("Badge", "1", "name", "New Name");
+      assert.fieldEquals("Badge", "1", "isOfficial", "false");
+      assert.fieldEquals("Badge", "1", "isCommunity", "true");
+
+      log.success("Badge modified successfully", []);
+    });
+
+    test("Should update uri and imageUrl from IPFS metadataURI", () => {
+      createAndSaveBadge("2", "Badge Two", true);
+
+      mockIpfsFile(
+        "QmValidMetadata",
+        "tests/badges/ipfs-mocks/valid-metadata.json",
+      );
+
+      const modifiedEvent = createBadgeModifiedEvent(
+        BigInt.fromI32(2),
+        "Badge Two Updated",
+        true,
+        false,
+        "ipfs://QmValidMetadata",
+      );
+
+      handleBadgeModified(modifiedEvent);
+
+      assert.fieldEquals("Badge", "2", "name", "Badge Two Updated");
+      assert.fieldEquals("Badge", "2", "uri", "ipfs://QmValidMetadata");
+
+      log.success("Badge uri and imageUrl updated from IPFS", []);
+    });
+
+    test("Should do nothing if badge does not exist", () => {
+      const modifiedEvent = createBadgeModifiedEvent(
+        BigInt.fromI32(999),
+        "Ghost Badge",
+        true,
+      );
+
+      handleBadgeModified(modifiedEvent);
+
+      assert.notInStore("Badge", "999");
+
+      log.success("No badge created when BadgeModified targets unknown id", []);
     });
   });
 });

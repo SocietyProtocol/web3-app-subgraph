@@ -12,6 +12,7 @@ import {
 import { Badge, User } from "../generated/schema";
 import {
   BadgeCreated,
+  BadgeModified,
   BadgePermissions,
   EditorsUpdated,
   HookUpdated,
@@ -129,6 +130,24 @@ export function handleBadgeCreated(event: BadgeCreated): void {
   }
 
   badge.imageUrl = getImageUrlFromIpfsUri(badge.uri);
+
+  badge.save();
+}
+
+export function handleBadgeModified(event: BadgeModified): void {
+  log.info("Handling BadgeModified for badge ID: {}", [
+    event.params.id.toString(),
+  ]);
+  const badge = Badge.load(event.params.id.toString());
+  if (badge == null) {
+    return;
+  }
+
+  badge.name = event.params.name;
+  badge.isOfficial = event.params.isOfficial;
+  badge.isCommunity = event.params.isCommunity;
+  badge.uri = event.params.metadataURI;
+  badge.imageUrl = getImageUrlFromIpfsUri(event.params.metadataURI);
 
   badge.save();
 }
