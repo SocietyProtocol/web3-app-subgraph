@@ -39,5 +39,7 @@ cache
 .yarn/install-state.gz
 
 tests/.bin
+tests/.latest.json
 
 subgraph.yaml
+
