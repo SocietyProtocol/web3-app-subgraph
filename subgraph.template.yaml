@@ -18,18 +18,22 @@ dataSources:
       language: wasm/assemblyscript
       entities:
         - BadgeCreated
+        - BadgeModified
         - HookUpdated
         - ProfileCreated
         - URI
         - TransferSingle
         - TransferBatch
         - EditorsUpdated
+        - BadgePermissions
       abis:
         - name: SocietyProtocolBadges
           file: ./abis/SocietyProtocolBadges.json
       eventHandlers:
         - event: BadgeCreated(indexed uint256,string,bool,bool,indexed address)
           handler: handleBadgeCreated
+        - event: BadgeModified(indexed uint256,string,bool,bool,string)
+          handler: handleBadgeModified
         - event: HookUpdated(indexed uint256,indexed address)
           handler: handleHookUpdated
         - event: ProfileCreated(indexed address,indexed uint256)
@@ -42,6 +46,8 @@ dataSources:
           handler: handleTransferBatch
         - event: EditorsUpdated(indexed uint256,indexed address,bool)
           handler: handleEditorsUpdated
+        - event: BadgePermissions(indexed uint256,uint256[],uint256[],uint256[],address[])
+          handler: handleBadgePermissions
       file: ./src/society-protocol-badges.ts
   - kind: ethereum
     name: EasyAuction

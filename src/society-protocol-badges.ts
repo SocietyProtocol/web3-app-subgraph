@@ -4,11 +4,16 @@ import {
   Bytes,
   ipfs,
   json,
+  JSONValue,
+  JSONValueKind,
   log,
+  TypedMap,
 } from "@graphprotocol/graph-ts";
 import { Badge, User } from "../generated/schema";
 import {
   BadgeCreated,
+  BadgeModified,
+  BadgePermissions,
   EditorsUpdated,
   HookUpdated,
   ProfileCreated,
@@ -17,19 +22,7 @@ import {
   TransferSingle,
   URI,
 } from "../generated/SocietyProtocolBadges/SocietyProtocolBadges";
-
-const findOrCreateUser = (userId: string): User => {
-  let user = User.load(userId);
-
-  if (user == null) {
-    user = new User(userId);
-    user.badges = [];
-    user.managedBadges = [];
-    user.save();
-  }
-
-  return user;
-};
+import { findOrCreateUser } from "./user";
 
 const findOrCreateBadge = (badgeId: string, creator: string): Badge => {
   let badge = Badge.load(badgeId);
@@ -42,10 +35,14 @@ const findOrCreateBadge = (badgeId: string, creator: string): Badge => {
     badge.name = "";
     badge.isOfficial = false;
     badge.isCommunity = false;
+    badge.isProfile = false;
     badge.hookAddress = new Bytes(0);
     badge.createdAt = BigInt.zero();
     badge.uri = "";
     badge.holdersCount = BigInt.zero();
+    badge.minters = [];
+    badge.burners = [];
+    badge.transferers = [];
 
     badge.save();
   }
@@ -53,29 +50,59 @@ const findOrCreateBadge = (badgeId: string, creator: string): Badge => {
   return badge;
 };
 
-const getImageUrlFromMetadata = (uri: string | null): string | null => {
-  if (uri !== null && uri.includes("/ipfs/")) {
-    const parts = uri.split("/ipfs/");
-    if (parts.length > 1) {
-      const hash = parts[parts.length - 1];
+const getIpfsJson = (
+  uri: string | null,
+): TypedMap<string, JSONValue> | null => {
+  if (uri !== null) {
+    let hash: string = "";
 
+    if (uri.startsWith("ipfs://")) {
+      // Handle ipfs://QmHash format
+      hash = uri.slice(7);
+    } else if (uri.includes("/ipfs/")) {
+      // Handle /ipfs/QmHash format
+      const parts = uri.split("/ipfs/");
+      if (parts.length > 1) {
+        hash = parts[parts.length - 1];
+      }
+    }
+
+    if (hash.length > 0) {
       const metadata = ipfs.cat(hash);
 
       if (metadata !== null) {
-        const jsonData = json.fromBytes(metadata).toObject();
-
-        const imageUrl = jsonData.get("imageUrl");
-
-        if (imageUrl !== null) {
-          return imageUrl.toString();
+        const parsed = json.fromBytes(metadata);
+        if (parsed.kind === JSONValueKind.OBJECT) {
+          return parsed.toObject();
         }
+      } else {
+        log.info("No IPFS metadata found for hash: {}", [hash]);
       }
     }
   }
+
+  return null;
+};
+
+const getImageUrlFromIpfsUri = (uri: string | null): string | null => {
+  const metadata = getIpfsJson(uri);
+
+  if (metadata !== null) {
+    log.info("IPFS metadata found for uri: {}", [uri ? uri : "null"]);
+    const imageUrl = metadata.get("imageUrl");
+
+    if (imageUrl !== null && imageUrl.kind === JSONValueKind.STRING) {
+      return imageUrl.toString();
+    }
+  }
+
   return null;
 };
 
 export function handleBadgeCreated(event: BadgeCreated): void {
+  log.info("Handling BadgeCreated for badge ID: {}", [
+    event.params.id.toString(),
+  ]);
   const badge = findOrCreateBadge(
     event.params.id.toString(),
     event.params.creator.toHexString(),
@@ -88,6 +115,7 @@ export function handleBadgeCreated(event: BadgeCreated): void {
   badge.name = event.params.name;
   badge.isOfficial = event.params.isOfficial;
   badge.isCommunity = event.params.isCommunity;
+  badge.isProfile = false;
   badge.hookAddress = new Bytes(0);
   badge.createdAt = event.block.timestamp;
 
@@ -101,12 +129,33 @@ export function handleBadgeCreated(event: BadgeCreated): void {
     badge.uri = "";
   }
 
-  badge.imageUrl = getImageUrlFromMetadata(badge.uri);
+  badge.imageUrl = getImageUrlFromIpfsUri(badge.uri);
+
+  badge.save();
+}
+
+export function handleBadgeModified(event: BadgeModified): void {
+  log.info("Handling BadgeModified for badge ID: {}", [
+    event.params.id.toString(),
+  ]);
+  const badge = Badge.load(event.params.id.toString());
+  if (badge == null) {
+    return;
+  }
+
+  badge.name = event.params.name;
+  badge.isOfficial = event.params.isOfficial;
+  badge.isCommunity = event.params.isCommunity;
+  badge.uri = event.params.metadataURI;
+  badge.imageUrl = getImageUrlFromIpfsUri(event.params.metadataURI);
 
   badge.save();
 }
 
 export function handleHookUpdated(event: HookUpdated): void {
+  log.info("Handling HookUpdated for badge ID: {}", [
+    event.params.id.toString(),
+  ]);
   const badge = Badge.load(event.params.id.toString());
   if (badge == null) {
     return;
@@ -117,6 +166,9 @@ export function handleHookUpdated(event: HookUpdated): void {
 }
 
 export function handleProfileCreated(event: ProfileCreated): void {
+  log.info("Handling ProfileCreated for user: {}", [
+    event.params.user.toHexString(),
+  ]);
   const userId = event.params.user;
 
   const user = findOrCreateUser(userId.toHexString());
@@ -128,10 +180,37 @@ export function handleProfileCreated(event: ProfileCreated): void {
   }
 
   user.profile = badge.id;
+
+  const metaData = getIpfsJson(badge.uri);
+
+  if (metaData !== null) {
+    const name = metaData.get("name");
+
+    if (name !== null && name.kind === JSONValueKind.STRING) {
+      user.name = name.toString();
+    }
+
+    const bio = metaData.get("bio");
+
+    if (bio !== null && bio.kind === JSONValueKind.STRING) {
+      user.bio = bio.toString();
+    }
+
+    const imageUrl = metaData.get("imageUrl");
+
+    if (imageUrl !== null && imageUrl.kind === JSONValueKind.STRING) {
+      user.imageUrl = imageUrl.toString();
+    }
+  }
+
   user.save();
+
+  badge.isProfile = true;
+  badge.save();
 }
 
 export function handleURI(event: URI): void {
+  log.info("Handling URI for badge ID: {}", [event.params.id.toString()]);
   const badge = Badge.load(event.params.id.toString());
   if (badge == null) {
     return;
@@ -139,7 +218,7 @@ export function handleURI(event: URI): void {
 
   badge.uri = event.params.value;
 
-  badge.imageUrl = getImageUrlFromMetadata(event.params.value);
+  badge.imageUrl = getImageUrlFromIpfsUri(event.params.value);
 
   badge.save();
 }
@@ -223,6 +302,9 @@ export function transfer(
 }
 
 export function handleTransferSingle(event: TransferSingle): void {
+  log.info("Handling TransferSingle for badge ID: {}", [
+    event.params.id.toString(),
+  ]);
   // Minting
   if (
     event.params.from.toHexString() ==
@@ -251,6 +333,9 @@ export function handleTransferSingle(event: TransferSingle): void {
 }
 
 export function handleTransferBatch(event: TransferBatch): void {
+  log.info("Handling TransferBatch for badge IDs: {}", [
+    event.params.ids.map<string>((id) => id.toString()).join(", "),
+  ]);
   const from = event.params.from;
   const to = event.params.to;
 
@@ -272,6 +357,9 @@ export function handleTransferBatch(event: TransferBatch): void {
 }
 
 export function handleEditorsUpdated(event: EditorsUpdated): void {
+  log.info("Handling EditorsUpdated for badge ID: {}", [
+    event.params.id.toString(),
+  ]);
   const badge = findOrCreateBadge(
     event.params.id.toString(),
     event.transaction.from.toHexString(),
@@ -296,4 +384,31 @@ export function handleEditorsUpdated(event: EditorsUpdated): void {
     manager.managedBadges = updatedBadges;
     manager.save();
   }
+}
+
+function bigIntArrayToStringArray(arr: Array<BigInt>): string[] {
+  const result: string[] = [];
+  for (let i = 0; i < arr.length; i++) {
+    result.push(arr[i].toString());
+  }
+  return result;
+}
+
+export function handleBadgePermissions(event: BadgePermissions): void {
+  log.info("Handling BadgePermissions for badge ID: {}", [
+    event.params.id.toString(),
+  ]);
+  const badge = findOrCreateBadge(
+    event.params.id.toString(),
+    event.transaction.from.toHexString(),
+  );
+
+  badge.minters = bigIntArrayToStringArray(event.params.minters);
+  badge.burners = bigIntArrayToStringArray(event.params.burners);
+  badge.transferers = bigIntArrayToStringArray(event.params.transferers);
+
+  // Note: event.params.editors is intentionally not stored here as a separate array.
+  // Editor permissions are managed through the EditorsUpdated event handler.
+
+  badge.save();
 }

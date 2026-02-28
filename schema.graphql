@@ -1,5 +1,8 @@
 type User @entity(immutable: false) {
   id: ID!
+  name: String
+  bio: String
+  imageUrl: String
   profile: Badge
   badges: [Badge!]!
   managedBadges: [Badge!]!
@@ -10,6 +13,7 @@ type Badge @entity(immutable: false) {
   name: String!
   isOfficial: Boolean!
   isCommunity: Boolean!
+  isProfile: Boolean!
   uri: String
   hookAddress: Bytes!
   creatorAddress: String!
@@ -17,6 +21,9 @@ type Badge @entity(immutable: false) {
   imageUrl: String
   createdBy: User!
   managers: [User!]! @derivedFrom(field: "managedBadges")
+  minters: [Badge!]!
+  burners: [Badge!]!
+  transferers: [Badge!]!
   holders: [User!]! @derivedFrom(field: "badges")
   holdersCount: BigInt!
 }

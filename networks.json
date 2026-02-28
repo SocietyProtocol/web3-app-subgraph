@@ -11,7 +11,7 @@
   },
   "sepolia": {
     "SocietyProtocolBadges": {
-      "address": "0x6F72d047eEC67024d2c8BC9FA17fC6659a0dA6d8",
+      "address": "0x76Aa1B43a651acc4320a4610af896ddfe38B428a",
       "startBlock": 10049341
     },
     "EasyAuction": {

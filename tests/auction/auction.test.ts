@@ -51,6 +51,12 @@ describe("Can call mappings with custom events", () => {
 
     // Assert that the user was added to the entity store
     assert.fieldEquals(entityTypes.get("AuctionUser"), "1", "id", "1");
+    assert.fieldEquals(
+      entityTypes.get("AuctionUser"),
+      "1",
+      "user",
+      addresses.get("userAddress1").toLowerCase(),
+    );
     log.success("handleNewAuctionUser adds user to the store", []);
   });
 
@@ -74,7 +80,7 @@ describe("Can call mappings with custom events", () => {
       TOKENS.get("1"),
       TOKENS.get("100"),
       addresses.get("zeroAddress"),
-      "0x"
+      "0x",
     );
 
     // Mock function calls which the handleAuction handler will make to the auction/token contracts
@@ -93,7 +99,7 @@ describe("Can call mappings with custom events", () => {
       false,
       false,
       0,
-      TOKENS.get("100")
+      TOKENS.get("100"),
     );
 
     mockTokenSymbol(auctioningTokenContractAddress, "AUT");
@@ -113,11 +119,11 @@ describe("Can call mappings with custom events", () => {
       entityTypes.get("AuctionDetail"),
       "1",
       "exactOrder",
-      "1-1000000000000000000000-2000000000000000000000-1"
+      "1-1000000000000000000000-2000000000000000000000-1",
     );
     log.success(
       "handleNewAuction adds a New Auction Detail entry to the store",
-      []
+      [],
     );
   });
 
@@ -143,7 +149,7 @@ describe("Can call mappings with custom events", () => {
       0x1,
       0x2,
       BigInt.fromString("1"),
-      BigInt.fromString("2")
+      BigInt.fromString("2"),
     );
     handleNewSellOrder(newSellOrderEvent);
 
@@ -179,7 +185,7 @@ describe("Can call mappings with custom events", () => {
       0x1,
       0x2,
       BigInt.fromString("1"),
-      BigInt.fromString("2")
+      BigInt.fromString("2"),
     );
     handleNewSellOrder(newSellOrderEvent);
 
@@ -197,7 +203,7 @@ describe("Can call mappings with custom events", () => {
       0x1,
       0x2,
       BigInt.fromString("1"),
-      BigInt.fromString("2")
+      BigInt.fromString("2"),
     );
     handleCancellationSellOrder(cancelSellOrderEvent);
 
@@ -207,7 +213,7 @@ describe("Can call mappings with custom events", () => {
     assert.i32Equals(orders!.length, 0);
     log.success(
       "handleCancellationSellOrder removes order from AuctionDetail",
-      []
+      [],
     );
   });
 
@@ -233,7 +239,7 @@ describe("Can call mappings with custom events", () => {
       0x1,
       0x2,
       BigInt.fromString("1"),
-      BigInt.fromString("2")
+      BigInt.fromString("2"),
     );
     handleNewSellOrder(newSellOrderEvent);
 
@@ -251,7 +257,7 @@ describe("Can call mappings with custom events", () => {
       0x1,
       0x2,
       BigInt.fromString("1"),
-      BigInt.fromString("2")
+      BigInt.fromString("2"),
     );
     handleClaimedFromOrder(claimEvent);
 
