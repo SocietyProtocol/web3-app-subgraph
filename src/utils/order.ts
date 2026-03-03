@@ -29,11 +29,14 @@ export class OrderValues {
  * The function splits the order ID string by the "-" delimiter and converts the sell amount, buy amount, and user ID into BigInt types for further processing.
  *
  * @param orderId - The order ID string to parse.
- * @returns An {@link OrderValues} instance containing the auction ID as a string, and the sell amount, buy amount, and user ID as BigInt types.
- * @throws If the order ID format is invalid (e.g., missing parts or non-numeric values for amounts and user ID), the function may throw an error during parsing.
+ * @returns An {@link OrderValues} instance containing the auction ID as a string, and the sell amount, buy amount, and user ID as BigInt types, or null if the order ID format is invalid.
  */
-export function getValuesFromOrderId(orderId: string): OrderValues {
+export function getValuesFromOrderId(orderId: string): OrderValues | null {
   let parts = orderId.split("-");
+
+  if (parts.length != 4) {
+    return null;
+  }
 
   return new OrderValues(
     parts[0],

@@ -47,6 +47,11 @@ export function findClearingOrder(
     let orderId = orderIds[i];
     let order = getValuesFromOrderId(orderId);
 
+    if (order == null) {
+      log.warning("findClearingOrder: skipping invalid order ID {}", [orderId]);
+      continue;
+    }
+
     let nextAUT = cumulativeAUT.plus(order.buyAmount);
 
     // Clearing happens here
@@ -74,6 +79,11 @@ export function computeOrderPrice(
   decimalsBiddingToken: i32,
 ): BigDecimal {
   let order = getValuesFromOrderId(orderId);
+
+  if (order == null) {
+    log.warning("computeOrderPrice: invalid order ID {}", [orderId]);
+    return BigDecimal.zero();
+  }
 
   let numerator = order.sellAmount
     .toBigDecimal()
@@ -104,6 +114,13 @@ export function computeAuctionOutcome(
   }
 
   let marginalOrder = getValuesFromOrderId(result.orderId as string);
+
+  if (marginalOrder == null) {
+    log.warning("computeAuctionOutcome: invalid marginal order ID {}", [
+      result.orderId as string,
+    ]);
+    return new AuctionOutcome(BigDecimal.zero(), BigInt.zero(), BigInt.zero());
+  }
 
   // Guard against invalid orders with zero buyAmount to avoid division by zero
   if (marginalOrder.buyAmount.isZero()) {
