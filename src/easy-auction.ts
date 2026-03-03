@@ -33,7 +33,7 @@ import { getChainHexFromName, getChainIdFromName } from "./utils/getChainId";
 import { getTokenList } from "./legitTokens";
 import { findOrCreateUser } from "./user";
 import { computeAuctionOutcome } from "./utils/clearing";
-import { getValuesFromOrderId } from "./utils/order";
+import { getValuesFromOrderId, OrderValues } from "./utils/order";
 
 const ZERO = BigInt.zero();
 const ONE = BigInt.fromI32(1);
@@ -232,8 +232,6 @@ export function handleNewAuction(event: NewAuction): void {
   order.volume = pricePoint.get("volume");
   order.price = ONE.divDecimal(pricePoint.get("price"));
   order.timestamp = eventTimeStamp;
-  order.currentClearingPrice = ONE.divDecimal(pricePoint.get("price"));
-  order.currentClearingVolume = BigDecimal.fromString("0");
   order.save();
   let auctionDetails = new AuctionDetail(auctionId.toString());
   auctionDetails.auctionId = auctionId;
@@ -346,8 +344,6 @@ export function handleNewSellOrder(event: NewSellOrder): void {
   order.price = pricePoint.get("price");
   order.volume = pricePoint.get("volume");
   order.timestamp = event.block.timestamp;
-  order.currentClearingPrice = auctionDetails.currentClearingPrice;
-  order.currentClearingVolume = auctionDetails.currentVolume;
   order.save();
 
   let orders: string[] = [];
@@ -458,11 +454,9 @@ export function updateClearingOrderAndVolume(auction: AuctionDetail): void {
     return;
   }
 
-  let exactOrder;
+  let exactOrder = getValuesFromOrderId(auction.exactOrder);
 
-  try {
-    exactOrder = getValuesFromOrderId(auction.exactOrder);
-  } catch {
+  if (exactOrder == null) {
     auction.currentClearingPrice = ZERO_BD;
     auction.currentVolume = ZERO_BD;
     auction.currentBiddingAmount = ZERO;
@@ -470,7 +464,6 @@ export function updateClearingOrderAndVolume(auction: AuctionDetail): void {
     auction.currentClearingOrderBuyAmount = ZERO;
     auction.interestScore = ZERO_BD;
     auction.usdAmountTraded = ZERO_BD;
-
     auction.save();
     return;
   }
