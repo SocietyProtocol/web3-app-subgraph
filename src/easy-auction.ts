@@ -503,6 +503,10 @@ export function updateClearingOrderAndVolume(auction: AuctionDetail): void {
       outcome.biddingVolume,
       outcome.price,
     );
+  } else {
+    // When there is no valid price (e.g. not funded / no clearing),
+    // ensure usdAmountTraded does not leak a stale non-zero value.
+    auction.usdAmountTraded = ZERO_BD;
   }
 
   auction.save();
