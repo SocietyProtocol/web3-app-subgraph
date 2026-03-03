@@ -1,9 +1,4 @@
-import {
-  assert,
-  describe,
-  log,
-  test,
-} from "matchstick-as/assembly/index";
+import { assert, describe, log, test } from "matchstick-as/assembly/index";
 import { BigInt } from "@graphprotocol/graph-ts";
 
 import { computeAuctionOutcome } from "../../src/utils/clearing";
@@ -38,8 +33,8 @@ describe("sortOrders – tie-breakers", () => {
 
 // Shared scenario used in the computeAuctionOutcome tests below:
 //
-//   Order A: "1-200-60-1" – sellAmount=200 BDT, buyAmount=60 AUT (higher price)
-//   Order B: "1-300-80-2" – sellAmount=300 BDT, buyAmount=80 AUT (lower price, marginal)
+//   Order A: "1-200-60-1" – sellAmount=200 BDT, buyAmount=60 AUT (lower price)
+//   Order B: "1-300-80-2" – sellAmount=300 BDT, buyAmount=80 AUT (higher price, marginal/clearing order)
 //   totalAuctionSupply = 100 AUT
 //
 //   Processing order A first:  nextAUT = 0+60 = 60 < 100 → fully filled

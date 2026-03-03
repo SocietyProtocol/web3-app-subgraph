@@ -1,5 +1,4 @@
 import { BigDecimal, BigInt, log } from "@graphprotocol/graph-ts";
-import { Order } from "../../generated/schema";
 import { getValuesFromOrderId } from "./order";
 
 let TEN = BigInt.fromI32(10);
