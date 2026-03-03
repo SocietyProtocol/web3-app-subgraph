@@ -499,5 +499,18 @@ export function updateClearingOrderAndVolume(auction: AuctionDetail): void {
     .toBigDecimal()
     .div(TEN.pow(<u8>auction.decimalsBiddingToken.toI32()).toBigDecimal());
 
+  // Keep clearing order amounts in sync (BDT collected / AUT sold)
+  auction.currentClearingOrderSellAmount = outcome.biddingVolume;
+  auction.currentClearingOrderBuyAmount = outcome.auctioningVolume;
+
+  if (!outcome.price.equals(ZERO_BD)) {
+    auction.usdAmountTraded = getUsdAmountTraded(
+      auction.addressBiddingToken,
+      auction.addressAuctioningToken,
+      outcome.biddingVolume,
+      outcome.price,
+    );
+  }
+
   auction.save();
 }
