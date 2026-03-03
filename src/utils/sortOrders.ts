@@ -1,10 +1,10 @@
 import { getValuesFromOrderId } from "./order";
 
 /**
- * Compares two order IDs based on their price (auctioningTokenAmount / biddingTokenAmount) in descending order.
+ * Compares two order IDs based on their price (sellAmount / buyAmount) in descending order.
  * Each order ID is expected to be in the format "auctionId-sellAmount-buyAmount-userId".
  *  The function calculates the price for each order and compares them to determine their order in the sorted list.
- *  If two orders have the same price, it uses tie-breakers: first by larger bidding amount, then by lower user ID.
+ *  If two orders have the same price, it uses tie-breakers: first by larger sell amount, then by lower user ID.
  *
  * @param aOrderId - The first order ID to compare.
  * @param bOrderId - The second order ID to compare.
@@ -25,7 +25,7 @@ function comparePriceDesc(aOrderId: string, bOrderId: string): i32 {
   if (left.gt(right)) return -1;
   if (left.lt(right)) return 1;
 
-  // Tie-breaker 1: larger bidding amount first
+  // Tie-breaker 1: larger sell amount first
   if (aOrder.sellAmount.gt(bOrder.sellAmount)) return -1;
   if (aOrder.sellAmount.lt(bOrder.sellAmount)) return 1;
 
@@ -37,7 +37,7 @@ function comparePriceDesc(aOrderId: string, bOrderId: string): i32 {
 }
 
 /**
- *  Sorts an array of order IDs in descending order based on price (auctioningTokenAmount / biddingTokenAmount).
+ *  Sorts an array of order IDs in descending order based on price (sellAmount / buyAmount).
  *
  * Each order ID is expected to be in the format "auctionId-sellAmount-buyAmount-userId".
  * The function modifies the input array in place and also returns it for convenience.
