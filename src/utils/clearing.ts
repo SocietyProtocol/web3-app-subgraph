@@ -1,4 +1,5 @@
-import { BigDecimal, BigInt } from "@graphprotocol/graph-ts";
+import { BigDecimal, BigInt, log } from "@graphprotocol/graph-ts";
+import { Order } from "../../generated/schema";
 import { getValuesFromOrderId } from "./order";
 
 let TEN = BigInt.fromI32(10);
@@ -103,6 +104,15 @@ export function computeAuctionOutcome(
   }
 
   let marginalOrder = getValuesFromOrderId(result.orderId as string);
+
+  // Guard against invalid orders with zero buyAmount to avoid division by zero
+  if (marginalOrder.buyAmount.isZero()) {
+    log.warning(
+      "computeAuctionOutcome: marginal order {} has buyAmount == 0; treating auction as non-clearing",
+      [result.orderId as string],
+    );
+    return new AuctionOutcome(BigDecimal.zero(), BigInt.zero(), BigInt.zero());
+  }
 
   // Remaining AUT to fill
   let remainingAUT = totalAuctionSupply.minus(result.cumulativeAUT);
