@@ -1,20 +1,14 @@
-import { BigInt } from "@graphprotocol/graph-ts";
 import { getValuesFromOrderId } from "./order";
 
 /**
- * Compares two order IDs based on price (auctioningTokenAmount / biddingTokenAmount) in descending order.
+ * Compares two order IDs based on their price (auctioningTokenAmount / biddingTokenAmount) in descending order.
+ * Each order ID is expected to be in the format "auctionId-sellAmount-buyAmount-userId".
+ *  The function calculates the price for each order and compares them to determine their order in the sorted list.
+ *  If two orders have the same price, it uses tie-breakers: first by larger bidding amount, then by lower user ID.
  *
- *  Each order ID is expected to be in the format "auctionId-sellAmount-buyAmount-userId".
- *  The sellAmount represents the bidding token amount and the buyAmount represents the auctioning token amount.
- * The function uses cross-multiplication to compare prices without performing division, which avoids precision issues.
- * The sorting order is as follows:
- * 1. Price descending (higher price first)
- * 2. If prices are equal, then by bidding amount descending (higher bidding amount first)
- * 3. If both price and bidding amount are equal, then by user ID ascending (lower user ID first)
- *
- * @param aOrderId Order ID string in the format "auctionId-sellAmount-buyAmount-userId".
- * @param bOrderId Order ID string in the format "auctionId-sellAmount-buyAmount-userId".
- * @returns -1 if aOrderId should come before bOrderId, 1 if aOrderId should come after bOrderId, or 0 if they are considered equal in sorting order.
+ * @param aOrderId - The first order ID to compare.
+ * @param bOrderId - The second order ID to compare.
+ * @returns -1 if aOrderId should come before bOrderId, 1 if bOrderId should come before aOrderId, or 0 if they are considered equal in sorting order.
  */
 function comparePriceDesc(aOrderId: string, bOrderId: string): i32 {
   const aOrder = getValuesFromOrderId(aOrderId);

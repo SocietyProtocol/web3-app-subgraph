@@ -32,7 +32,8 @@ import sortOrders from "./utils/sortOrders";
 import { getChainHexFromName, getChainIdFromName } from "./utils/getChainId";
 import { getTokenList } from "./legitTokens";
 import { findOrCreateUser } from "./user";
-import { computeAuctionOutcome, computeClearingPrice } from "./utils/clearing";
+import { computeAuctionOutcome } from "./utils/clearing";
+import { getValuesFromOrderId } from "./utils/order";
 
 const ZERO = BigInt.zero();
 const ONE = BigInt.fromI32(1);
@@ -127,9 +128,7 @@ export function handleCancellationSellOrder(
     store.remove("Order", orderId);
   });
 
-  auctionDetails.save();
-
-  updateClearingOrderAndVolume(auctionDetails.auctionId);
+  updateClearingOrderAndVolume(auctionDetails);
 
   log.info(
     "Sell order cancelled with Order ID: {} for auction ID: {}, new clearing price updated: {}",
@@ -374,7 +373,7 @@ export function handleNewSellOrder(event: NewSellOrder): void {
   user.save();
   auctionDetails.save();
 
-  updateClearingOrderAndVolume(auctionDetails.auctionId);
+  updateClearingOrderAndVolume(auctionDetails);
 
   log.info(
     "New sell order placed with Order ID: {} for auction ID: {}, new clearing price updated: {}",
@@ -444,35 +443,43 @@ function getUsdAmountTraded(
   return ZERO.toBigDecimal();
 }
 
-export function updateClearingOrderAndVolume(auctionId: BigInt): void {
-  let auction = AuctionDetail.load(auctionId.toString());
+export function updateClearingOrderAndVolume(auction: AuctionDetail): void {
   if (!auction) return;
 
   if (!auction.orders || auction.orders!.length == 0) {
     auction.currentClearingPrice = ZERO_BD;
     auction.currentVolume = ZERO_BD;
     auction.currentBiddingAmount = ZERO;
+    auction.currentClearingOrderSellAmount = ZERO;
+    auction.currentClearingOrderBuyAmount = ZERO;
+    auction.interestScore = ZERO_BD;
+    auction.usdAmountTraded = ZERO_BD;
     auction.save();
     return;
   }
 
-  let exactParts = auction.exactOrder.split("-");
-  if (exactParts.length < 4) {
+  let exactOrder;
+
+  try {
+    exactOrder = getValuesFromOrderId(auction.exactOrder);
+  } catch {
     auction.currentClearingPrice = ZERO_BD;
     auction.currentVolume = ZERO_BD;
     auction.currentBiddingAmount = ZERO;
+    auction.currentClearingOrderSellAmount = ZERO;
+    auction.currentClearingOrderBuyAmount = ZERO;
+    auction.interestScore = ZERO_BD;
+    auction.usdAmountTraded = ZERO_BD;
+
     auction.save();
     return;
   }
-
-  // AUT total supply (raw)
-  let totalAuctionSupply = BigInt.fromString(exactParts[1]);
 
   let sortedOrders = sortOrders(auction.orders!);
 
   let outcome = computeAuctionOutcome(
     sortedOrders,
-    totalAuctionSupply,
+    exactOrder.sellAmount,
     auction.minFundingThreshold,
     auction.decimalsAuctioningToken.toI32(),
     auction.decimalsBiddingToken.toI32(),

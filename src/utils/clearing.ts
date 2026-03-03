@@ -1,5 +1,4 @@
 import { BigDecimal, BigInt } from "@graphprotocol/graph-ts";
-import { Order } from "../../generated/schema";
 import { getValuesFromOrderId } from "./order";
 
 let TEN = BigInt.fromI32(10);
@@ -88,29 +87,6 @@ export function computeOrderPrice(
   }
 
   return numerator.div(denominator);
-}
-
-export function computeClearingPrice(
-  orderIds: string[],
-  totalAuctionSupply: BigInt,
-  minFundingThreshold: BigInt,
-  decimalsAuctionToken: i32,
-  decimalsBiddingToken: i32,
-): BigDecimal {
-  let result = findClearingOrder(orderIds, totalAuctionSupply);
-  if (result.orderId == null) {
-    return BigDecimal.zero();
-  }
-
-  if (!isAuctionFunded(result.cumulativeBDT, minFundingThreshold)) {
-    return BigDecimal.zero();
-  }
-
-  return computeOrderPrice(
-    result.orderId,
-    decimalsAuctionToken,
-    decimalsBiddingToken,
-  );
 }
 
 export function computeAuctionOutcome(
