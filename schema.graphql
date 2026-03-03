@@ -51,6 +51,8 @@ type Order @entity(immutable: false) {
   price: BigDecimal!
   volume: BigDecimal!
   timestamp: BigInt!
+  currentClearingPrice: BigDecimal!
+  currentClearingVolume: BigDecimal!
 }
 
 type AuctionUser @entity(immutable: false) {

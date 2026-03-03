@@ -1,0 +1,157 @@
+import { BigDecimal, BigInt } from "@graphprotocol/graph-ts";
+import { Order } from "../../generated/schema";
+import { getValuesFromOrderId } from "./order";
+
+let TEN = BigInt.fromI32(10);
+
+export class ClearingResult {
+  orderId: string | null;
+  cumulativeBDT: BigInt; // fully filled BDT (before marginal)
+  cumulativeAUT: BigInt; // fully filled AUT (before marginal)
+
+  constructor(
+    orderId: string | null,
+    cumulativeBDT: BigInt,
+    cumulativeAUT: BigInt,
+  ) {
+    this.orderId = orderId;
+    this.cumulativeBDT = cumulativeBDT;
+    this.cumulativeAUT = cumulativeAUT;
+  }
+}
+
+export class AuctionOutcome {
+  price: BigDecimal;
+  auctioningVolume: BigInt; // AUT
+  biddingVolume: BigInt; // BDT
+
+  constructor(
+    price: BigDecimal,
+    auctioningVolume: BigInt,
+    biddingVolume: BigInt,
+  ) {
+    this.price = price;
+    this.auctioningVolume = auctioningVolume;
+    this.biddingVolume = biddingVolume;
+  }
+}
+
+export function findClearingOrder(
+  orderIds: string[],
+  totalAuctionSupply: BigInt,
+): ClearingResult {
+  let cumulativeBDT = BigInt.zero();
+  let cumulativeAUT = BigInt.zero();
+
+  for (let i = 0; i < orderIds.length; i++) {
+    let orderId = orderIds[i];
+    let order = getValuesFromOrderId(orderId);
+
+    let nextAUT = cumulativeAUT.plus(order.buyAmount);
+
+    // Clearing happens here
+    if (nextAUT.ge(totalAuctionSupply)) {
+      return new ClearingResult(orderId, cumulativeBDT, cumulativeAUT);
+    }
+
+    cumulativeBDT = cumulativeBDT.plus(order.sellAmount);
+    cumulativeAUT = nextAUT;
+  }
+
+  return new ClearingResult(null, cumulativeBDT, cumulativeAUT);
+}
+
+export function isAuctionFunded(
+  cumulativeBDT: BigInt,
+  minFundingThreshold: BigInt,
+): boolean {
+  return cumulativeBDT.ge(minFundingThreshold);
+}
+
+export function computeOrderPrice(
+  orderId: string,
+  decimalsAuctionToken: i32,
+  decimalsBiddingToken: i32,
+): BigDecimal {
+  let order = getValuesFromOrderId(orderId);
+
+  let numerator = order.sellAmount
+    .toBigDecimal()
+    .div(TEN.pow(decimalsBiddingToken as u8).toBigDecimal());
+
+  let denominator = order.buyAmount
+    .toBigDecimal()
+    .div(TEN.pow(decimalsAuctionToken as u8).toBigDecimal());
+
+  if (denominator.equals(BigDecimal.zero())) {
+    return BigDecimal.zero();
+  }
+
+  return numerator.div(denominator);
+}
+
+export function computeClearingPrice(
+  orderIds: string[],
+  totalAuctionSupply: BigInt,
+  minFundingThreshold: BigInt,
+  decimalsAuctionToken: i32,
+  decimalsBiddingToken: i32,
+): BigDecimal {
+  let result = findClearingOrder(orderIds, totalAuctionSupply);
+  if (result.orderId == null) {
+    return BigDecimal.zero();
+  }
+
+  if (!isAuctionFunded(result.cumulativeBDT, minFundingThreshold)) {
+    return BigDecimal.zero();
+  }
+
+  return computeOrderPrice(
+    result.orderId,
+    decimalsAuctionToken,
+    decimalsBiddingToken,
+  );
+}
+
+export function computeAuctionOutcome(
+  orderIds: string[],
+  totalAuctionSupply: BigInt,
+  minFundingThreshold: BigInt,
+  decimalsAuctionToken: i32,
+  decimalsBiddingToken: i32,
+): AuctionOutcome {
+  let result = findClearingOrder(orderIds, totalAuctionSupply);
+
+  if (result.orderId == null) {
+    return new AuctionOutcome(BigDecimal.zero(), BigInt.zero(), BigInt.zero());
+  }
+
+  let marginalOrder = getValuesFromOrderId(result.orderId as string);
+
+  // Remaining AUT to fill
+  let remainingAUT = totalAuctionSupply.minus(result.cumulativeAUT);
+
+  // Partial BDT from marginal order
+  let partialBDT = marginalOrder.sellAmount
+    .times(remainingAUT)
+    .div(marginalOrder.buyAmount);
+
+  let finalBDT = result.cumulativeBDT.plus(partialBDT);
+
+  if (!isAuctionFunded(finalBDT, minFundingThreshold)) {
+    return new AuctionOutcome(BigDecimal.zero(), BigInt.zero(), BigInt.zero());
+  }
+
+  // Compute clearing price
+  let price = computeOrderPrice(
+    result.orderId as string,
+    decimalsAuctionToken,
+    decimalsBiddingToken,
+  );
+
+  return new AuctionOutcome(
+    price,
+    totalAuctionSupply, // full AUT sold
+    finalBDT, // actual BDT collected
+  );
+}

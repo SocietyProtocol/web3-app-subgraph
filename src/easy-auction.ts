@@ -32,10 +32,12 @@ import sortOrders from "./utils/sortOrders";
 import { getChainHexFromName, getChainIdFromName } from "./utils/getChainId";
 import { getTokenList } from "./legitTokens";
 import { findOrCreateUser } from "./user";
+import { computeAuctionOutcome, computeClearingPrice } from "./utils/clearing";
 
 const ZERO = BigInt.zero();
 const ONE = BigInt.fromI32(1);
 const TEN = BigInt.fromString("10");
+const ZERO_BD = BigDecimal.zero();
 
 export function handleAuctionCleared(event: AuctionCleared): void {
   log.info("Handling AuctionCleared for auction ID: {}", [
@@ -128,6 +130,15 @@ export function handleCancellationSellOrder(
   auctionDetails.save();
 
   updateClearingOrderAndVolume(auctionDetails.auctionId);
+
+  log.info(
+    "Sell order cancelled with Order ID: {} for auction ID: {}, new clearing price updated: {}",
+    [
+      orderId,
+      auctionId.toString(),
+      auctionDetails.currentClearingPrice.toString(),
+    ],
+  );
 }
 
 // Remove claimed orders
@@ -222,6 +233,8 @@ export function handleNewAuction(event: NewAuction): void {
   order.volume = pricePoint.get("volume");
   order.price = ONE.divDecimal(pricePoint.get("price"));
   order.timestamp = eventTimeStamp;
+  order.currentClearingPrice = ONE.divDecimal(pricePoint.get("price"));
+  order.currentClearingVolume = BigDecimal.fromString("0");
   order.save();
   let auctionDetails = new AuctionDetail(auctionId.toString());
   auctionDetails.auctionId = auctionId;
@@ -334,6 +347,8 @@ export function handleNewSellOrder(event: NewSellOrder): void {
   order.price = pricePoint.get("price");
   order.volume = pricePoint.get("volume");
   order.timestamp = event.block.timestamp;
+  order.currentClearingPrice = auctionDetails.currentClearingPrice;
+  order.currentClearingVolume = auctionDetails.currentVolume;
   order.save();
 
   let orders: string[] = [];
@@ -360,6 +375,15 @@ export function handleNewSellOrder(event: NewSellOrder): void {
   auctionDetails.save();
 
   updateClearingOrderAndVolume(auctionDetails.auctionId);
+
+  log.info(
+    "New sell order placed with Order ID: {} for auction ID: {}, new clearing price updated: {}",
+    [
+      order.id,
+      auctionId.toString(),
+      auctionDetails.currentClearingPrice.toString(),
+    ],
+  );
 }
 
 export function handleNewAuctionUser(event: NewUser): void {
@@ -420,179 +444,53 @@ function getUsdAmountTraded(
   return ZERO.toBigDecimal();
 }
 
-function updateClearingOrderAndVolume(auctionId: BigInt): void {
-  let auctionDetails = AuctionDetail.load(auctionId.toString());
-  if (!auctionDetails) {
+export function updateClearingOrderAndVolume(auctionId: BigInt): void {
+  let auction = AuctionDetail.load(auctionId.toString());
+  if (!auction) return;
+
+  if (!auction.orders || auction.orders!.length == 0) {
+    auction.currentClearingPrice = ZERO_BD;
+    auction.currentVolume = ZERO_BD;
+    auction.currentBiddingAmount = ZERO;
+    auction.save();
     return;
   }
 
-  const addressAuctioningToken = auctionDetails.addressAuctioningToken;
-  const addressBiddingToken = auctionDetails.addressBiddingToken;
-  let decimalAuctioningToken = auctionDetails.decimalsAuctioningToken;
-  let decimalBiddingToken = auctionDetails.decimalsBiddingToken;
-  let orders = sortOrders(auctionDetails.orders!);
-  const initialOrderDetailsList = auctionDetails.exactOrder.split("-");
-  const initialOrderSellAmount = BigInt.fromString(initialOrderDetailsList[1]);
-  const initialOrderBuyAmount = BigInt.fromString(initialOrderDetailsList[2]);
-
-  const auctioningTokenAmountOfInitialOrder = initialOrderSellAmount;
-  const biddingTokenAmountOfInitialOrder = initialOrderBuyAmount;
-
-  let biddingTokenTotal = ZERO;
-  let currentOrder: Order | null = null;
-
-  // Loop through all the sorted orders
-  // Orders are sorted from highest price to lowest
-  for (let i = 0; i < orders.length; i++) {
-    let order = Order.load(orders[i]);
-    if (!order) {
-      return;
-    }
-    currentOrder = order;
-
-    biddingTokenTotal = biddingTokenTotal.plus(order.sellAmount || ZERO);
-
-    if (
-      biddingTokenTotal
-        .divDecimal(auctioningTokenAmountOfInitialOrder.toBigDecimal())
-        .ge(order.sellAmount.divDecimal(order.buyAmount.toBigDecimal()))
-    ) {
-      break;
-    }
-  }
-
-  if (!currentOrder) {
+  let exactParts = auction.exactOrder.split("-");
+  if (exactParts.length < 4) {
+    auction.currentClearingPrice = ZERO_BD;
+    auction.currentVolume = ZERO_BD;
+    auction.currentBiddingAmount = ZERO;
+    auction.save();
     return;
   }
 
-  if (
-    biddingTokenTotal.ge(ZERO) &&
-    biddingTokenTotal
-      .divDecimal(auctioningTokenAmountOfInitialOrder.toBigDecimal())
-      .ge(
-        currentOrder.sellAmount.divDecimal(
-          currentOrder.buyAmount.toBigDecimal(),
-        ),
-      )
-  ) {
-    let uncoveredBids = biddingTokenTotal.minus(
-      auctioningTokenAmountOfInitialOrder
-        .times(currentOrder.sellAmount)
-        .div(currentOrder.buyAmount),
-    );
+  // AUT total supply (raw)
+  let totalAuctionSupply = BigInt.fromString(exactParts[1]);
 
-    if (currentOrder.sellAmount.gt(uncoveredBids)) {
-      let volume = currentOrder.sellAmount.minus(uncoveredBids);
-      let currentBiddingAmount = biddingTokenTotal
-        .minus(currentOrder.sellAmount)
-        .plus(volume);
-      auctionDetails.currentClearingOrderBuyAmount = currentOrder.buyAmount;
-      auctionDetails.currentClearingOrderSellAmount = currentOrder.sellAmount;
-      auctionDetails.currentClearingPrice = convertToPricePoint(
-        currentOrder.sellAmount,
-        currentOrder.buyAmount,
-        decimalAuctioningToken.toI32(),
-        decimalBiddingToken.toI32(),
-      ).get("price");
-      auctionDetails.currentVolume = new BigDecimal(volume);
-      auctionDetails.currentBiddingAmount = currentBiddingAmount;
-      auctionDetails.interestScore = currentBiddingAmount
-        .toBigDecimal()
-        .div(TEN.pow(<u8>decimalBiddingToken.toI32()).toBigDecimal());
-      auctionDetails.usdAmountTraded = getUsdAmountTraded(
-        addressBiddingToken,
-        addressAuctioningToken,
-        currentBiddingAmount,
-        currentOrder.price,
-      );
-      auctionDetails.save();
-      return;
-    } else {
-      let clearingOrderSellAmount = biddingTokenTotal.minus(
-        currentOrder.sellAmount,
-      );
-      let clearingOrderBuyAmount = auctioningTokenAmountOfInitialOrder;
-      const currentBiddingAmount = biddingTokenTotal.minus(
-        currentOrder.sellAmount,
-      );
-      auctionDetails.currentClearingOrderBuyAmount = clearingOrderBuyAmount;
-      auctionDetails.currentClearingOrderSellAmount = clearingOrderSellAmount;
-      const currentClearingPrice = convertToPricePoint(
-        clearingOrderSellAmount,
-        clearingOrderBuyAmount,
-        decimalAuctioningToken.toI32(),
-        decimalBiddingToken.toI32(),
-      ).get("price");
-      auctionDetails.currentClearingPrice = currentClearingPrice;
-      auctionDetails.currentVolume = BigDecimal.fromString("0");
-      auctionDetails.currentBiddingAmount = currentBiddingAmount;
-      auctionDetails.interestScore = currentBiddingAmount
-        .toBigDecimal()
-        .div(TEN.pow(<u8>decimalBiddingToken.toI32()).toBigDecimal());
-      auctionDetails.usdAmountTraded = getUsdAmountTraded(
-        addressBiddingToken,
-        addressAuctioningToken,
-        currentBiddingAmount,
-        currentClearingPrice,
-      );
-      auctionDetails.save();
-      return;
-    }
-  } else if (biddingTokenTotal.ge(biddingTokenAmountOfInitialOrder)) {
-    const clearingOrderBuyAmount = auctioningTokenAmountOfInitialOrder;
-    const clearingOrderSellAmount = biddingTokenTotal;
-    auctionDetails.currentClearingOrderBuyAmount = clearingOrderBuyAmount;
-    auctionDetails.currentClearingOrderSellAmount = clearingOrderSellAmount;
-    const currentClearingPrice = convertToPricePoint(
-      clearingOrderSellAmount,
-      clearingOrderBuyAmount,
-      decimalAuctioningToken.toI32(),
-      decimalBiddingToken.toI32(),
-    ).get("price");
-    auctionDetails.currentClearingPrice = currentClearingPrice;
-    auctionDetails.currentVolume = BigDecimal.fromString("0");
-    auctionDetails.currentBiddingAmount = biddingTokenTotal;
-    auctionDetails.interestScore = biddingTokenTotal
-      .toBigDecimal()
-      .div(TEN.pow(<u8>decimalBiddingToken.toI32()).toBigDecimal());
-    auctionDetails.usdAmountTraded = getUsdAmountTraded(
-      addressBiddingToken,
-      addressAuctioningToken,
-      biddingTokenTotal,
-      currentClearingPrice,
-    );
+  let sortedOrders = sortOrders(auction.orders!);
 
-    auctionDetails.save();
-    return;
-  } else {
-    const clearingOrderBuyAmount = auctioningTokenAmountOfInitialOrder;
-    const clearingOrderSellAmount = biddingTokenAmountOfInitialOrder;
-    const volume = new BigDecimal(biddingTokenTotal).times(
-      auctioningTokenAmountOfInitialOrder.divDecimal(
-        new BigDecimal(biddingTokenAmountOfInitialOrder),
-      ),
-    );
-    auctionDetails.currentClearingOrderBuyAmount = clearingOrderBuyAmount;
-    auctionDetails.currentClearingOrderSellAmount = clearingOrderSellAmount;
-    const currentClearingPrice = convertToPricePoint(
-      clearingOrderSellAmount,
-      clearingOrderBuyAmount,
-      decimalAuctioningToken.toI32(),
-      decimalBiddingToken.toI32(),
-    ).get("price");
-    auctionDetails.currentClearingPrice = currentClearingPrice;
-    auctionDetails.currentVolume = volume;
-    auctionDetails.currentBiddingAmount = biddingTokenTotal;
-    auctionDetails.interestScore = biddingTokenTotal
-      .toBigDecimal()
-      .div(TEN.pow(<u8>decimalBiddingToken.toI32()).toBigDecimal());
-    auctionDetails.usdAmountTraded = getUsdAmountTraded(
-      addressBiddingToken,
-      addressAuctioningToken,
-      biddingTokenTotal,
-      currentClearingPrice,
-    );
-    auctionDetails.save();
-    return;
-  }
+  let outcome = computeAuctionOutcome(
+    sortedOrders,
+    totalAuctionSupply,
+    auction.minFundingThreshold,
+    auction.decimalsAuctioningToken.toI32(),
+    auction.decimalsBiddingToken.toI32(),
+  );
+
+  auction.currentClearingPrice = outcome.price;
+
+  // convert AUT raw volume → normalized decimal
+  auction.currentVolume = outcome.auctioningVolume
+    .toBigDecimal()
+    .div(TEN.pow(<u8>auction.decimalsAuctioningToken.toI32()).toBigDecimal());
+
+  auction.currentBiddingAmount = outcome.biddingVolume;
+
+  // interestScore = normalized BDT collected
+  auction.interestScore = outcome.biddingVolume
+    .toBigDecimal()
+    .div(TEN.pow(<u8>auction.decimalsBiddingToken.toI32()).toBigDecimal());
+
+  auction.save();
 }
