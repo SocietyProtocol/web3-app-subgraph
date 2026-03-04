@@ -51,6 +51,14 @@ export function findClearingOrder(
       continue;
     }
 
+    if (order.buyAmount.isZero()) {
+      log.warning(
+        "findClearingOrder: skipping order {} with buyAmount == 0",
+        [orderId],
+      );
+      continue;
+    }
+
     let nextAUT = cumulativeAUT.plus(order.buyAmount);
 
     // Clearing happens here

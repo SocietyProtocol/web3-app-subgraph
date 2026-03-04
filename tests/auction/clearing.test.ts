@@ -167,6 +167,33 @@ describe("computeAuctionOutcome", () => {
     );
   });
 
+  test("zero-buyAmount orders are ignored and do not inflate biddingVolume", () => {
+    // Order Z: "1-999-0-9" – sellAmount=999 BDT, buyAmount=0 AUT → must be skipped
+    // Order A: "1-200-60-1" – sellAmount=200 BDT, buyAmount=60 AUT
+    // Order B: "1-300-80-2" – sellAmount=300 BDT, buyAmount=80 AUT (clearing)
+    // totalAuctionSupply=100, sorted by descending price so Z first (price=∞)
+    // Z is skipped; A fills 60, B is marginal (same result as baseline test)
+    let orderIds = ["1-999-0-9", "1-200-60-1", "1-300-80-2"];
+    let totalAuctionSupply = BigInt.fromI32(100);
+    let minFundingThreshold = BigInt.fromI32(100); // 350 ≥ 100 → funded
+
+    let outcome = computeAuctionOutcome(
+      orderIds,
+      totalAuctionSupply,
+      minFundingThreshold,
+      0,
+      0,
+    );
+
+    // Z's sellAmount (999) must NOT be counted; result must equal the baseline
+    assert.stringEquals(outcome.biddingVolume.toString(), "350");
+    assert.stringEquals(outcome.auctioningVolume.toString(), "100");
+    log.success(
+      "computeAuctionOutcome: zero-buyAmount order ignored, biddingVolume = 350",
+      [],
+    );
+  });
+
   test("undersubscribed: returns zeros when cumulativeBDT is below minFundingThreshold", () => {
     let orderIds = sortOrders(["1-400-80-1", "1-300-80-2"]);
     let totalAuctionSupply = BigInt.fromI32(200); // higher than total demand of 160
