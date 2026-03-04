@@ -194,6 +194,35 @@ describe("computeAuctionOutcome", () => {
     );
   });
 
+  test("undersubscribed: uses last valid order price, ignoring trailing zero-buyAmount orders", () => {
+    // Order H: "1-400-80-1" – valid, price = 5.0
+    // Order L: "1-300-80-2" – valid, price = 3.75 (last valid order)
+    // Order Z: "1-999-0-9"  – zero buyAmount, must be skipped
+    // totalAuctionSupply = 200, total valid demand = 80+80 = 160 < 200 → undersubscribed
+    // Without fix: orderIds[last] = "1-999-0-9" → computeOrderPrice returns 0 (wrong)
+    // With fix:    lastValidOrderId = "1-300-80-2" → price = 3.75 (correct)
+    let orderIds = ["1-400-80-1", "1-300-80-2", "1-999-0-9"];
+    let totalAuctionSupply = BigInt.fromI32(200);
+    let minFundingThreshold = BigInt.fromI32(100); // 700 ≥ 100 → funded
+
+    let outcome = computeAuctionOutcome(
+      orderIds,
+      totalAuctionSupply,
+      minFundingThreshold,
+      0,
+      0,
+    );
+
+    assert.stringEquals(outcome.biddingVolume.toString(), "700");
+    assert.stringEquals(outcome.auctioningVolume.toString(), "160");
+    // price must come from last *valid* order "1-300-80-2", not the trailing zero-buyAmount order
+    assert.stringEquals(outcome.price.toString(), "3.75");
+    log.success(
+      "computeAuctionOutcome undersubscribed: trailing zero-buyAmount order ignored for price",
+      [],
+    );
+  });
+
   test("undersubscribed: returns zeros when cumulativeBDT is below minFundingThreshold", () => {
     let orderIds = sortOrders(["1-400-80-1", "1-300-80-2"]);
     let totalAuctionSupply = BigInt.fromI32(200); // higher than total demand of 160
