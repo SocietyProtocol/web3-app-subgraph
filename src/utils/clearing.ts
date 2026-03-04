@@ -109,7 +109,25 @@ export function computeAuctionOutcome(
   let result = findClearingOrder(orderIds, totalAuctionSupply);
 
   if (result.orderId == null) {
-    return new AuctionOutcome(BigDecimal.zero(), BigInt.zero(), BigInt.zero());
+    // Auction is undersubscribed: total demand < totalAuctionSupply.
+    // Return the actual cumulative volumes at the last (lowest-price) order's price
+    // so live metrics show a meaningful value rather than all zeros.
+    if (orderIds.length == 0) {
+      return new AuctionOutcome(BigDecimal.zero(), BigInt.zero(), BigInt.zero());
+    }
+
+    if (!isAuctionFunded(result.cumulativeBDT, minFundingThreshold)) {
+      return new AuctionOutcome(BigDecimal.zero(), BigInt.zero(), BigInt.zero());
+    }
+
+    let lastOrderId = orderIds[orderIds.length - 1];
+    let price = computeOrderPrice(
+      lastOrderId,
+      decimalsAuctionToken,
+      decimalsBiddingToken,
+    );
+
+    return new AuctionOutcome(price, result.cumulativeAUT, result.cumulativeBDT);
   }
 
   let marginalOrder = getValuesFromOrderId(result.orderId as string);
