@@ -31,24 +31,27 @@ describe("sortOrders – tie-breakers", () => {
   });
 });
 
-// Shared scenario used in the computeAuctionOutcome tests below:
+// Shared scenario used in the computeAuctionOutcome tests below.
+// Orders are sorted by price desc before being passed to computeAuctionOutcome,
+// matching production behavior in easy-auction.ts.
 //
-//   Order A: "1-200-60-1" – sellAmount=200 BDT, buyAmount=60 AUT (lower price)
-//   Order B: "1-300-80-2" – sellAmount=300 BDT, buyAmount=80 AUT (higher price, marginal/clearing order)
+//   Order B: "1-300-80-2" – sellAmount=300 BDT, buyAmount=80 AUT (higher price = 3.75, sorted first)
+//   Order A: "1-200-60-1" – sellAmount=200 BDT, buyAmount=60 AUT (lower price ≈ 3.33, marginal/clearing order)
 //   totalAuctionSupply = 100 AUT
 //
-//   Processing order A first:  nextAUT = 0+60 = 60 < 100 → fully filled
-//     cumulativeAUT = 60, cumulativeBDT = 200
-//   Processing order B:        nextAUT = 60+80 = 140 ≥ 100 → clearing order
-//     remainingAUT = 100-60 = 40
-//     partialBDT   = 300 * 40 / 80 = 150
-//     finalBDT     = 200 + 150 = 350
+//   After sortOrders (price desc): [B, A]
+//   Processing order B first:   nextAUT = 0+80 = 80 < 100 → fully filled
+//     cumulativeAUT = 80, cumulativeBDT = 300
+//   Processing order A:         nextAUT = 80+60 = 140 ≥ 100 → clearing order
+//     remainingAUT = 100-80 = 20
+//     partialBDT   = 200 * 20 / 60 = 66 (integer division)
+//     finalBDT     = 300 + 66 = 366
 
 describe("computeAuctionOutcome", () => {
   test("partial fill: biddingVolume is correctly computed for the marginal order", () => {
-    let orderIds = ["1-200-60-1", "1-300-80-2"];
+    let orderIds = sortOrders(["1-200-60-1", "1-300-80-2"]);
     let totalAuctionSupply = BigInt.fromI32(100);
-    let minFundingThreshold = BigInt.fromI32(100); // 350 ≥ 100 → funded
+    let minFundingThreshold = BigInt.fromI32(100); // 366 ≥ 100 → funded
 
     let outcome = computeAuctionOutcome(
       orderIds,
@@ -58,18 +61,18 @@ describe("computeAuctionOutcome", () => {
       0,
     );
 
-    assert.stringEquals(outcome.biddingVolume.toString(), "350");
+    assert.stringEquals(outcome.biddingVolume.toString(), "366");
     assert.stringEquals(outcome.auctioningVolume.toString(), "100");
     log.success(
-      "computeAuctionOutcome partial fill: biddingVolume = 350, auctioningVolume = 100",
+      "computeAuctionOutcome partial fill: biddingVolume = 366, auctioningVolume = 100",
       [],
     );
   });
 
   test("minFundingThreshold: returns zero outcome when finalBDT is below threshold", () => {
-    let orderIds = ["1-200-60-1", "1-300-80-2"];
+    let orderIds = sortOrders(["1-200-60-1", "1-300-80-2"]);
     let totalAuctionSupply = BigInt.fromI32(100);
-    let minFundingThreshold = BigInt.fromI32(500); // 350 < 500 → not funded
+    let minFundingThreshold = BigInt.fromI32(500); // 366 < 500 → not funded
 
     let outcome = computeAuctionOutcome(
       orderIds,
@@ -89,9 +92,9 @@ describe("computeAuctionOutcome", () => {
   });
 
   test("minFundingThreshold: returns full outcome when finalBDT exactly equals threshold", () => {
-    let orderIds = ["1-200-60-1", "1-300-80-2"];
+    let orderIds = sortOrders(["1-200-60-1", "1-300-80-2"]);
     let totalAuctionSupply = BigInt.fromI32(100);
-    let minFundingThreshold = BigInt.fromI32(350); // 350 == 350 → exactly funded
+    let minFundingThreshold = BigInt.fromI32(366); // 366 == 366 → exactly funded
 
     let outcome = computeAuctionOutcome(
       orderIds,
@@ -101,7 +104,7 @@ describe("computeAuctionOutcome", () => {
       0,
     );
 
-    assert.stringEquals(outcome.biddingVolume.toString(), "350");
+    assert.stringEquals(outcome.biddingVolume.toString(), "366");
     assert.stringEquals(outcome.auctioningVolume.toString(), "100");
     log.success(
       "computeAuctionOutcome funded at threshold: full outcome when finalBDT == threshold",
@@ -109,19 +112,20 @@ describe("computeAuctionOutcome", () => {
     );
   });
 
-  // Undersubscribed auction scenario (orders in price-descending / sorted order):
-  //   Order A: "1-300-80-2"  – sellAmount=300 BDT, buyAmount=80 AUT  (higher price 3.75, first)
-  //   Order B: "1-200-100-1" – sellAmount=200 BDT, buyAmount=100 AUT (lower price 2.0, last)
+  // Undersubscribed auction scenario:
+  //   Order H: "1-400-80-1" – sellAmount=400 BDT, buyAmount=80 AUT (higher price = 5.0, sorted first)
+  //   Order L: "1-300-80-2" – sellAmount=300 BDT, buyAmount=80 AUT (lower price = 3.75, sorted last)
   //   totalAuctionSupply = 200 AUT
   //
-  //   Total AUT demanded = 80 + 100 = 180 < 200 → undersubscribed (orderId == null)
-  //   cumulativeBDT = 300 + 200 = 500, cumulativeAUT = 180
-  //   Clearing price = last order B price = 200/100 = 2
+  //   After sortOrders (price desc): [H, L]
+  //   Total AUT demanded = 80 + 80 = 160 < 200 → undersubscribed (orderId == null)
+  //   cumulativeBDT = 400 + 300 = 700, cumulativeAUT = 160
+  //   Clearing price = last order L price = 300/80 = 3.75
 
   test("undersubscribed: returns actual volumes and last-order price when demand < supply", () => {
-    let orderIds = ["1-300-80-2", "1-200-100-1"]; // pre-sorted price desc
-    let totalAuctionSupply = BigInt.fromI32(200); // higher than total demand of 180
-    let minFundingThreshold = BigInt.fromI32(100); // 500 ≥ 100 → funded
+    let orderIds = sortOrders(["1-400-80-1", "1-300-80-2"]);
+    let totalAuctionSupply = BigInt.fromI32(200); // higher than total demand of 160
+    let minFundingThreshold = BigInt.fromI32(100); // 700 ≥ 100 → funded
 
     let outcome = computeAuctionOutcome(
       orderIds,
@@ -131,10 +135,10 @@ describe("computeAuctionOutcome", () => {
       0,
     );
 
-    assert.stringEquals(outcome.biddingVolume.toString(), "500");
-    assert.stringEquals(outcome.auctioningVolume.toString(), "180");
-    // price = 200/100 = 2
-    assert.stringEquals(outcome.price.toString(), "2");
+    assert.stringEquals(outcome.biddingVolume.toString(), "700");
+    assert.stringEquals(outcome.auctioningVolume.toString(), "160");
+    // price = 300/80 = 3.75
+    assert.stringEquals(outcome.price.toString(), "3.75");
     log.success(
       "computeAuctionOutcome undersubscribed: actual volumes and last-order price returned",
       [],
@@ -163,10 +167,37 @@ describe("computeAuctionOutcome", () => {
     );
   });
 
+  test("zero-buyAmount orders are ignored and do not inflate biddingVolume", () => {
+    // Order Z: "1-999-0-9" – sellAmount=999 BDT, buyAmount=0 AUT → must be skipped
+    // Order A: "1-200-60-1" – sellAmount=200 BDT, buyAmount=60 AUT
+    // Order B: "1-300-80-2" – sellAmount=300 BDT, buyAmount=80 AUT (clearing)
+    // totalAuctionSupply=100, sorted by descending price so Z first (price=∞)
+    // Z is skipped; A fills 60, B is marginal (same result as baseline test)
+    let orderIds = ["1-999-0-9", "1-200-60-1", "1-300-80-2"];
+    let totalAuctionSupply = BigInt.fromI32(100);
+    let minFundingThreshold = BigInt.fromI32(100); // 350 ≥ 100 → funded
+
+    let outcome = computeAuctionOutcome(
+      orderIds,
+      totalAuctionSupply,
+      minFundingThreshold,
+      0,
+      0,
+    );
+
+    // Z's sellAmount (999) must NOT be counted; result must equal the baseline
+    assert.stringEquals(outcome.biddingVolume.toString(), "350");
+    assert.stringEquals(outcome.auctioningVolume.toString(), "100");
+    log.success(
+      "computeAuctionOutcome: zero-buyAmount order ignored, biddingVolume = 350",
+      [],
+    );
+  });
+
   test("undersubscribed: returns zeros when cumulativeBDT is below minFundingThreshold", () => {
-    let orderIds = ["1-300-80-2", "1-200-100-1"]; // pre-sorted price desc
-    let totalAuctionSupply = BigInt.fromI32(200); // higher than total demand of 180
-    let minFundingThreshold = BigInt.fromI32(600); // 500 < 600 → not funded
+    let orderIds = sortOrders(["1-400-80-1", "1-300-80-2"]);
+    let totalAuctionSupply = BigInt.fromI32(200); // higher than total demand of 160
+    let minFundingThreshold = BigInt.fromI32(800); // 700 < 800 → not funded
 
     let outcome = computeAuctionOutcome(
       orderIds,
