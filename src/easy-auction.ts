@@ -28,6 +28,7 @@ import {
   UserRegistration,
 } from "../generated/EasyAuction/EasyAuction";
 import { Order } from "../generated/schema";
+import sortOrders from "./utils/sortOrders";
 import { getChainHexFromName, getChainIdFromName } from "./utils/getChainId";
 import { getTokenList } from "./legitTokens";
 import { findOrCreateUser } from "./user";
@@ -467,8 +468,10 @@ export function updateClearingOrderAndVolume(auction: AuctionDetail): void {
     return;
   }
 
+  let sortedOrders = sortOrders(auction.orders!);
+
   let outcome = computeAuctionOutcome(
-    auction.orders!,
+    sortedOrders,
     exactOrder.sellAmount,
     auction.minFundingThreshold,
     auction.decimalsAuctioningToken.toI32(),
