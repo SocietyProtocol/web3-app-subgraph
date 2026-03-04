@@ -14,8 +14,15 @@ function comparePriceDesc(aOrderId: string, bOrderId: string): i32 {
   const aOrder = getValuesFromOrderId(aOrderId);
   const bOrder = getValuesFromOrderId(bOrderId);
 
-  if (aOrder == null || bOrder == null) {
-    throw new Error("Invalid order ID format: " + aOrderId + " or " + bOrderId);
+  // Handle invalid order IDs defensively: sort invalid IDs last instead of throwing.
+  if (aOrder == null && bOrder == null) {
+    return 0;
+  }
+  if (aOrder == null) {
+    return 1; // aOrderId is invalid, so it should come after bOrderId
+  }
+  if (bOrder == null) {
+    return -1; // bOrderId is invalid, so it should come after aOrderId
   }
 
   let left = aOrder.sellAmount.times(bOrder.buyAmount);
