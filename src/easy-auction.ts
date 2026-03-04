@@ -480,10 +480,10 @@ export function updateClearingOrderAndVolume(auction: AuctionDetail): void {
 
   auction.currentClearingPrice = outcome.price;
 
-  // convert AUT raw volume → normalized decimal
-  auction.currentVolume = outcome.auctioningVolume
+  // currentVolume: normalized BDT volume (consistent with live-auction path)
+  auction.currentVolume = outcome.biddingVolume
     .toBigDecimal()
-    .div(TEN.pow(<u8>auction.decimalsAuctioningToken.toI32()).toBigDecimal());
+    .div(TEN.pow(<u8>auction.decimalsBiddingToken.toI32()).toBigDecimal());
 
   auction.currentBiddingAmount = outcome.biddingVolume;
 
