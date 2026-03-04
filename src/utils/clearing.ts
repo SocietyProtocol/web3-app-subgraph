@@ -1,5 +1,6 @@
 import { BigDecimal, BigInt, log } from "@graphprotocol/graph-ts";
 import { getValuesFromOrderId } from "./order";
+import { sortOrders } from "./sortOrders";
 
 let TEN = BigInt.fromI32(10);
 
@@ -106,13 +107,14 @@ export function computeAuctionOutcome(
   decimalsAuctionToken: i32,
   decimalsBiddingToken: i32,
 ): AuctionOutcome {
-  let result = findClearingOrder(orderIds, totalAuctionSupply);
+  let sorted = sortOrders(orderIds);
+  let result = findClearingOrder(sorted, totalAuctionSupply);
 
   if (result.orderId == null) {
     // Auction is undersubscribed: total demand < totalAuctionSupply.
     // Return the actual cumulative volumes at the last (lowest-price) order's price
     // so live metrics show a meaningful value rather than all zeros.
-    if (orderIds.length == 0) {
+    if (sorted.length == 0) {
       return new AuctionOutcome(BigDecimal.zero(), BigInt.zero(), BigInt.zero());
     }
 
@@ -120,7 +122,7 @@ export function computeAuctionOutcome(
       return new AuctionOutcome(BigDecimal.zero(), BigInt.zero(), BigInt.zero());
     }
 
-    let lastOrderId = orderIds[orderIds.length - 1];
+    let lastOrderId = sorted[sorted.length - 1];
     let price = computeOrderPrice(
       lastOrderId,
       decimalsAuctionToken,
