@@ -52,6 +52,14 @@ export function findClearingOrder(
       continue;
     }
 
+    if (order.buyAmount.isZero()) {
+      log.warning(
+        "findClearingOrder: skipping order {} with buyAmount == 0",
+        [orderId],
+      );
+      continue;
+    }
+
     let nextAUT = cumulativeAUT.plus(order.buyAmount);
 
     // Clearing happens here
@@ -138,15 +146,6 @@ export function computeAuctionOutcome(
     log.warning("computeAuctionOutcome: invalid marginal order ID {}", [
       result.orderId as string,
     ]);
-    return new AuctionOutcome(BigDecimal.zero(), BigInt.zero(), BigInt.zero());
-  }
-
-  // Guard against invalid orders with zero buyAmount to avoid division by zero
-  if (marginalOrder.buyAmount.isZero()) {
-    log.warning(
-      "computeAuctionOutcome: marginal order {} has buyAmount == 0; treating auction as non-clearing",
-      [result.orderId as string],
-    );
     return new AuctionOutcome(BigDecimal.zero(), BigInt.zero(), BigInt.zero());
   }
 
