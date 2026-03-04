@@ -169,13 +169,18 @@ describe("computeAuctionOutcome", () => {
 
   test("zero-buyAmount orders are ignored and do not inflate biddingVolume", () => {
     // Order Z: "1-999-0-9" – sellAmount=999 BDT, buyAmount=0 AUT → must be skipped
-    // Order A: "1-200-60-1" – sellAmount=200 BDT, buyAmount=60 AUT
-    // Order B: "1-300-80-2" – sellAmount=300 BDT, buyAmount=80 AUT (clearing)
-    // totalAuctionSupply=100, sorted by descending price so Z first (price=∞)
-    // Z is skipped; A fills 60, B is marginal (same result as baseline test)
-    let orderIds = ["1-999-0-9", "1-200-60-1", "1-300-80-2"];
+    // Order A: "1-200-60-1" – sellAmount=200 BDT, buyAmount=60 AUT (lower price ≈ 3.33, marginal)
+    // Order B: "1-300-80-2" – sellAmount=300 BDT, buyAmount=80 AUT (higher price = 3.75)
+    // totalAuctionSupply=100
+    //
+    // After sortOrders (price desc): [Z, B, A]
+    // Z is skipped (buyAmount=0); B fills 80, A is marginal (same result as baseline partial-fill test)
+    //   remainingAUT = 100-80 = 20
+    //   partialBDT   = 200 * 20 / 60 = 66
+    //   finalBDT     = 300 + 66 = 366
+    let orderIds = sortOrders(["1-999-0-9", "1-200-60-1", "1-300-80-2"]);
     let totalAuctionSupply = BigInt.fromI32(100);
-    let minFundingThreshold = BigInt.fromI32(100); // 350 ≥ 100 → funded
+    let minFundingThreshold = BigInt.fromI32(100); // 366 ≥ 100 → funded
 
     let outcome = computeAuctionOutcome(
       orderIds,
@@ -185,11 +190,11 @@ describe("computeAuctionOutcome", () => {
       0,
     );
 
-    // Z's sellAmount (999) must NOT be counted; result must equal the baseline
-    assert.stringEquals(outcome.biddingVolume.toString(), "350");
+    // Z's sellAmount (999) must NOT be counted; result must equal the baseline partial-fill test
+    assert.stringEquals(outcome.biddingVolume.toString(), "366");
     assert.stringEquals(outcome.auctioningVolume.toString(), "100");
     log.success(
-      "computeAuctionOutcome: zero-buyAmount order ignored, biddingVolume = 350",
+      "computeAuctionOutcome: zero-buyAmount order ignored, biddingVolume = 366",
       [],
     );
   });
