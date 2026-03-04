@@ -5,15 +5,18 @@ let TEN = BigInt.fromI32(10);
 
 export class ClearingResult {
   orderId: string | null;
+  lastValidOrderId: string | null; // last valid (non-null, non-zero-buyAmount) order seen
   cumulativeBDT: BigInt; // fully filled BDT (before marginal)
   cumulativeAUT: BigInt; // fully filled AUT (before marginal)
 
   constructor(
     orderId: string | null,
+    lastValidOrderId: string | null,
     cumulativeBDT: BigInt,
     cumulativeAUT: BigInt,
   ) {
     this.orderId = orderId;
+    this.lastValidOrderId = lastValidOrderId;
     this.cumulativeBDT = cumulativeBDT;
     this.cumulativeAUT = cumulativeAUT;
   }
@@ -41,6 +44,7 @@ export function findClearingOrder(
 ): ClearingResult {
   let cumulativeBDT = BigInt.zero();
   let cumulativeAUT = BigInt.zero();
+  let lastValidOrderId: string | null = null;
 
   for (let i = 0; i < orderIds.length; i++) {
     let orderId = orderIds[i];
@@ -59,18 +63,19 @@ export function findClearingOrder(
       continue;
     }
 
+    lastValidOrderId = orderId;
     let nextAUT = cumulativeAUT.plus(order.buyAmount);
 
     // Clearing happens here
     if (nextAUT.ge(totalAuctionSupply)) {
-      return new ClearingResult(orderId, cumulativeBDT, cumulativeAUT);
+      return new ClearingResult(orderId, lastValidOrderId, cumulativeBDT, cumulativeAUT);
     }
 
     cumulativeBDT = cumulativeBDT.plus(order.sellAmount);
     cumulativeAUT = nextAUT;
   }
 
-  return new ClearingResult(null, cumulativeBDT, cumulativeAUT);
+  return new ClearingResult(null, lastValidOrderId, cumulativeBDT, cumulativeAUT);
 }
 
 export function isAuctionFunded(
@@ -118,9 +123,9 @@ export function computeAuctionOutcome(
 
   if (result.orderId == null) {
     // Auction is undersubscribed: total demand < totalAuctionSupply.
-    // Return the actual cumulative volumes at the last (lowest-price) order's price
+    // Return the actual cumulative volumes at the last valid order's price
     // so live metrics show a meaningful value rather than all zeros.
-    if (orderIds.length == 0) {
+    if (result.lastValidOrderId == null) {
       return new AuctionOutcome(BigDecimal.zero(), BigInt.zero(), BigInt.zero());
     }
 
@@ -128,9 +133,8 @@ export function computeAuctionOutcome(
       return new AuctionOutcome(BigDecimal.zero(), BigInt.zero(), BigInt.zero());
     }
 
-    let lastOrderId = orderIds[orderIds.length - 1];
     let price = computeOrderPrice(
-      lastOrderId,
+      result.lastValidOrderId as string,
       decimalsAuctionToken,
       decimalsBiddingToken,
     );
