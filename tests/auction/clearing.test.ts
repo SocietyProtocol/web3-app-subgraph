@@ -32,9 +32,8 @@ describe("sortOrders – tie-breakers", () => {
 });
 
 // Shared scenario used in the computeAuctionOutcome tests below.
-// Orders are sorted by price desc before being passed to computeAuctionOutcome,
 // matching production behavior in easy-auction.ts.
-//
+// computeAuctionOutcome sorts internally.
 //   Order B: "1-300-80-2" – sellAmount=300 BDT, buyAmount=80 AUT (higher price = 3.75, sorted first)
 //   Order A: "1-200-60-1" – sellAmount=200 BDT, buyAmount=60 AUT (lower price ≈ 3.33, marginal/clearing order)
 //   totalAuctionSupply = 100 AUT
@@ -49,7 +48,7 @@ describe("sortOrders – tie-breakers", () => {
 
 describe("computeAuctionOutcome", () => {
   test("partial fill: biddingVolume is correctly computed for the marginal order", () => {
-    let orderIds = sortOrders(["1-200-60-1", "1-300-80-2"]);
+    let orderIds = ["1-200-60-1", "1-300-80-2"];
     let totalAuctionSupply = BigInt.fromI32(100);
     let minFundingThreshold = BigInt.fromI32(100); // 366 ≥ 100 → funded
 
