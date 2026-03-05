@@ -1,5 +1,6 @@
 import { BigDecimal, BigInt, log } from "@graphprotocol/graph-ts";
 import { getValuesFromOrderId } from "./order";
+import { sortOrders } from "./sortOrders";
 
 let TEN = BigInt.fromI32(10);
 
@@ -56,10 +57,9 @@ export function findClearingOrder(
     }
 
     if (order.buyAmount.isZero()) {
-      log.warning(
-        "findClearingOrder: skipping order {} with buyAmount == 0",
-        [orderId],
-      );
+      log.warning("findClearingOrder: skipping order {} with buyAmount == 0", [
+        orderId,
+      ]);
       continue;
     }
 
@@ -68,14 +68,24 @@ export function findClearingOrder(
 
     // Clearing happens here
     if (nextAUT.ge(totalAuctionSupply)) {
-      return new ClearingResult(orderId, lastValidOrderId, cumulativeBDT, cumulativeAUT);
+      return new ClearingResult(
+        orderId,
+        lastValidOrderId,
+        cumulativeBDT,
+        cumulativeAUT,
+      );
     }
 
     cumulativeBDT = cumulativeBDT.plus(order.sellAmount);
     cumulativeAUT = nextAUT;
   }
 
-  return new ClearingResult(null, lastValidOrderId, cumulativeBDT, cumulativeAUT);
+  return new ClearingResult(
+    null,
+    lastValidOrderId,
+    cumulativeBDT,
+    cumulativeAUT,
+  );
 }
 
 export function isAuctionFunded(
@@ -112,6 +122,12 @@ export function computeOrderPrice(
   return numerator.div(denominator);
 }
 
+/**
+ * Computes the auction outcome (clearing price and volumes) for the given orders.
+ *
+ * Orders are sorted internally by descending price before processing, so callers
+ * do not need to pre-sort the input array.
+ */
 export function computeAuctionOutcome(
   orderIds: string[],
   totalAuctionSupply: BigInt,
@@ -119,18 +135,27 @@ export function computeAuctionOutcome(
   decimalsAuctionToken: i32,
   decimalsBiddingToken: i32,
 ): AuctionOutcome {
-  let result = findClearingOrder(orderIds, totalAuctionSupply);
+  let sorted = sortOrders(orderIds);
+  let result = findClearingOrder(sorted, totalAuctionSupply);
 
   if (result.orderId == null) {
     // Auction is undersubscribed: total demand < totalAuctionSupply.
     // Return the actual cumulative volumes at the last valid order's price
     // so live metrics show a meaningful value rather than all zeros.
     if (result.lastValidOrderId == null) {
-      return new AuctionOutcome(BigDecimal.zero(), BigInt.zero(), BigInt.zero());
+      return new AuctionOutcome(
+        BigDecimal.zero(),
+        BigInt.zero(),
+        BigInt.zero(),
+      );
     }
 
     if (!isAuctionFunded(result.cumulativeBDT, minFundingThreshold)) {
-      return new AuctionOutcome(BigDecimal.zero(), BigInt.zero(), BigInt.zero());
+      return new AuctionOutcome(
+        BigDecimal.zero(),
+        BigInt.zero(),
+        BigInt.zero(),
+      );
     }
 
     let price = computeOrderPrice(
@@ -139,7 +164,11 @@ export function computeAuctionOutcome(
       decimalsBiddingToken,
     );
 
-    return new AuctionOutcome(price, result.cumulativeAUT, result.cumulativeBDT);
+    return new AuctionOutcome(
+      price,
+      result.cumulativeAUT,
+      result.cumulativeBDT,
+    );
   }
 
   let marginalOrder = getValuesFromOrderId(result.orderId as string);
