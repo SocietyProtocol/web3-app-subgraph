@@ -26,6 +26,7 @@ type Badge @entity(immutable: false) {
   transferers: [Badge!]!
   holders: [User!]! @derivedFrom(field: "badges")
   holdersCount: BigInt!
+  profileUser: User
 }
 
 type _Schema_

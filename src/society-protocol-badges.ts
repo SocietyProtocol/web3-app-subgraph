@@ -206,6 +206,7 @@ export function handleProfileCreated(event: ProfileCreated): void {
   user.save();
 
   badge.isProfile = true;
+  badge.profileUser = user.id;
   badge.save();
 }
 
@@ -217,10 +218,31 @@ export function handleURI(event: URI): void {
   }
 
   badge.uri = event.params.value;
-
   badge.imageUrl = getImageUrlFromIpfsUri(event.params.value);
-
   badge.save();
+
+  if (badge.isProfile && badge.profileUser != null) {
+    const user = User.load(badge.profileUser!);
+
+    if (user != null) {
+      const metaData = getIpfsJson(event.params.value);
+      if (metaData !== null) {
+        const name = metaData.get("name");
+        if (name !== null && name.kind === JSONValueKind.STRING) {
+          user.name = name.toString();
+        }
+        const bio = metaData.get("bio");
+        if (bio !== null && bio.kind === JSONValueKind.STRING) {
+          user.bio = bio.toString();
+        }
+        const imageUrl = metaData.get("imageUrl");
+        if (imageUrl !== null && imageUrl.kind === JSONValueKind.STRING) {
+          user.imageUrl = imageUrl.toString();
+        }
+      }
+      user.save();
+    }
+  }
 }
 
 export function mint(badgeId: BigInt, userId: Address, value: BigInt): void {
