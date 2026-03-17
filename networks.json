@@ -1,8 +1,8 @@
 {
   "mainnet": {
     "SocietyProtocolBadges": {
-      "address": "0x0000000000000000000000000000000000000000",
-      "startBlock": 12000000
+      "address": "0xa3af0da9733061da88b91ea28740780a887c8ce3",
+      "startBlock": 24621677
     },
     "EasyAuction": {
       "address": "0x0b7fFc1f4AD541A4Ed16b40D8c37f0929158D101",
