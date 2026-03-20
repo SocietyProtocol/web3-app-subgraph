@@ -84,19 +84,45 @@ const getIpfsJson = (
   return null;
 };
 
+const getImageUrlFromMetadata = (
+  metadata: TypedMap<string, JSONValue>,
+): string | null => {
+  const imageUrl = metadata.get("imageUrl");
+  if (imageUrl !== null && imageUrl.kind === JSONValueKind.STRING) {
+    return imageUrl.toString();
+  }
+  return null;
+};
+
 const getImageUrlFromIpfsUri = (uri: string | null): string | null => {
   const metadata = getIpfsJson(uri);
 
   if (metadata !== null) {
     log.info("IPFS metadata found for uri: {}", [uri ? uri : "null"]);
-    const imageUrl = metadata.get("imageUrl");
-
-    if (imageUrl !== null && imageUrl.kind === JSONValueKind.STRING) {
-      return imageUrl.toString();
-    }
+    return getImageUrlFromMetadata(metadata);
   }
 
   return null;
+};
+
+const applyIpfsMetadataToUser = (
+  user: User,
+  metadata: TypedMap<string, JSONValue>,
+): void => {
+  const name = metadata.get("name");
+  if (name !== null && name.kind === JSONValueKind.STRING) {
+    user.name = name.toString();
+  }
+
+  const bio = metadata.get("bio");
+  if (bio !== null && bio.kind === JSONValueKind.STRING) {
+    user.bio = bio.toString();
+  }
+
+  const imageUrl = metadata.get("imageUrl");
+  if (imageUrl !== null && imageUrl.kind === JSONValueKind.STRING) {
+    user.imageUrl = imageUrl.toString();
+  }
 };
 
 export function handleBadgeCreated(event: BadgeCreated): void {
@@ -182,25 +208,8 @@ export function handleProfileCreated(event: ProfileCreated): void {
   user.profile = badge.id;
 
   const metaData = getIpfsJson(badge.uri);
-
   if (metaData !== null) {
-    const name = metaData.get("name");
-
-    if (name !== null && name.kind === JSONValueKind.STRING) {
-      user.name = name.toString();
-    }
-
-    const bio = metaData.get("bio");
-
-    if (bio !== null && bio.kind === JSONValueKind.STRING) {
-      user.bio = bio.toString();
-    }
-
-    const imageUrl = metaData.get("imageUrl");
-
-    if (imageUrl !== null && imageUrl.kind === JSONValueKind.STRING) {
-      user.imageUrl = imageUrl.toString();
-    }
+    applyIpfsMetadataToUser(user, metaData);
   }
 
   user.save();
@@ -218,28 +227,15 @@ export function handleURI(event: URI): void {
   }
 
   badge.uri = event.params.value;
-  badge.imageUrl = getImageUrlFromIpfsUri(event.params.value);
+
+  const metaData = getIpfsJson(event.params.value);
+  badge.imageUrl = metaData !== null ? getImageUrlFromMetadata(metaData) : null;
   badge.save();
 
   if (badge.isProfile && badge.profileUser != null) {
     const user = User.load(badge.profileUser!);
-
-    if (user != null) {
-      const metaData = getIpfsJson(event.params.value);
-      if (metaData !== null) {
-        const name = metaData.get("name");
-        if (name !== null && name.kind === JSONValueKind.STRING) {
-          user.name = name.toString();
-        }
-        const bio = metaData.get("bio");
-        if (bio !== null && bio.kind === JSONValueKind.STRING) {
-          user.bio = bio.toString();
-        }
-        const imageUrl = metaData.get("imageUrl");
-        if (imageUrl !== null && imageUrl.kind === JSONValueKind.STRING) {
-          user.imageUrl = imageUrl.toString();
-        }
-      }
+    if (user != null && metaData !== null) {
+      applyIpfsMetadataToUser(user, metaData);
       user.save();
     }
   }
