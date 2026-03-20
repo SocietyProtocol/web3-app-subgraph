@@ -56,7 +56,15 @@ fs.writeFileSync(outputPath, template);
 
 // Generate auction-config.ts from AUCTION_ID env variable
 // Set AUCTION_ID=<id> to index only that auction; leave unset (or "0") to index all
-const auctionId = process.env.AUCTION_ID || "0";
+const rawAuctionId = process.env.AUCTION_ID;
+let auctionId = "0";
+if (rawAuctionId && /^\d+$/.test(rawAuctionId)) {
+  auctionId = rawAuctionId;
+} else if (rawAuctionId && !/^\d+$/.test(rawAuctionId)) {
+  console.warn(
+    `Warning: Invalid AUCTION_ID "${rawAuctionId}" — expected a decimal number. Falling back to "0".`,
+  );
+}
 const auctionConfigPath = path.join(
   __dirname,
   "..",
