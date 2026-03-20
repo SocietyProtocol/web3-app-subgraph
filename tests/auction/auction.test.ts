@@ -268,3 +268,119 @@ describe("Can call mappings with custom events", () => {
     log.success("handleClaimedFromOrder removes order from AuctionDetail", []);
   });
 });
+
+describe("handleNewAuctionUser — address management", () => {
+  afterEach(() => {
+    clearStore();
+  });
+
+  test("stores the canonical address from the NewUser event, not transaction.from", () => {
+    // userAddress2 is distinct from any address newMockEventWithParams uses as
+    // transaction.from, so this confirms we read event.params.userAddress.
+    let newUserEvent = createNewUserEvent(0x5, addresses.get("userAddress2"));
+    handleNewAuctionUser(newUserEvent);
+
+    assert.fieldEquals(
+      "AuctionUser",
+      "5",
+      "address",
+      addresses.get("userAddress2").toLowerCase(),
+    );
+    log.success("handleNewAuctionUser stores event.params.userAddress", []);
+  });
+
+  test("corrects a stale fallback address when a NewUser event arrives later", () => {
+    // Simulate findOrCreateAuctionUser having been called with transaction.from
+    // (an incorrect sender address) before the corresponding NewUser event was indexed.
+    let staleAddress = addresses.get("userAddress1");
+    let preCreated = new AuctionUser("7");
+    preCreated.address = Bytes.fromHexString(staleAddress);
+    preCreated.auctions = new Array();
+    preCreated.save();
+
+    assert.fieldEquals(
+      "AuctionUser",
+      "7",
+      "address",
+      staleAddress.toLowerCase(),
+    );
+
+    // The NewUser event now arrives with the real, authoritative address.
+    let realAddress = addresses.get("userAddress2");
+    handleNewAuctionUser(createNewUserEvent(0x7, realAddress));
+
+    assert.fieldEquals(
+      "AuctionUser",
+      "7",
+      "address",
+      realAddress.toLowerCase(),
+    );
+    log.success("handleNewAuctionUser corrects stale fallback address", []);
+  });
+});
+
+describe("isTargetAuction / AUCTION_ID_FILTER", () => {
+  afterEach(() => {
+    clearStore();
+  });
+
+  // NOTE: The "skip non-target auction" branch (when AUCTION_ID_FILTER != "0")
+  // cannot be exercised in this suite. AUCTION_ID_FILTER is a compile-time
+  // constant written by scripts/prepare.js into src/auction-config.ts, which
+  // defaults to "0" (index everything). Testing the skip path would require a
+  // separate build produced by running `AUCTION_ID=<n> npm run prepare` before
+  // compiling the test wasm.
+
+  test("all auctions are indexed when AUCTION_ID_FILTER is '0'", () => {
+    // Pre-create user 1 (required by handleNewAuction when filter is "0").
+    let user = new AuctionUser("1");
+    user.address = Bytes.fromHexString(addresses.get("userAddress1"));
+    user.auctions = new Array();
+    user.save();
+
+    // Auction ID 9 — would be skipped if the filter were set to "1".
+    let newAuctionEvent = createNewAuctionEvent(
+      0x9,
+      addresses.get("auctioningTokenAddress"),
+      addresses.get("biddingTokenAddress"),
+      dates.get("orderCancellationEndDate1"),
+      dates.get("auctionEndDate1"),
+      0x1,
+      TOKENS.get("1000"),
+      TOKENS.get("2000"),
+      TOKENS.get("1"),
+      TOKENS.get("100"),
+      addresses.get("zeroAddress"),
+      "0x",
+    );
+
+    mockAuctionDataFunctionCall(
+      BigInt.fromString("9"),
+      addresses.get("auctioningTokenAddress"),
+      addresses.get("biddingTokenAddress"),
+      dates.get("orderCancellationEndDate1"),
+      dates.get("auctionEndDate1"),
+      encodedOrders.get("initialAuctionOrder1"),
+      TOKENS.get("1"),
+      0,
+      encodedOrders.get("startingOrder"),
+      encodedOrders.get("zeroOrder"),
+      0,
+      false,
+      false,
+      0,
+      TOKENS.get("100"),
+    );
+
+    mockTokenSymbol(auctioningTokenContractAddress, "AUT");
+    mockTokenDecimals(auctioningTokenContractAddress, 18);
+    mockTokenSymbol(biddingTokenContractAddress, "BDT");
+    mockTokenDecimals(biddingTokenContractAddress, 18);
+
+    handleNewAuction(newAuctionEvent);
+
+    assert.entityCount("AuctionDetail", 1);
+    assert.fieldEquals("AuctionDetail", "9", "auctionId", "9");
+    log.success("all auctions indexed when AUCTION_ID_FILTER is '0'", []);
+  });
+});

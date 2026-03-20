@@ -59,7 +59,8 @@ fs.writeFileSync(outputPath, template);
 const rawAuctionId = process.env.AUCTION_ID;
 let auctionId = "0";
 if (rawAuctionId && /^\d+$/.test(rawAuctionId)) {
-  auctionId = rawAuctionId;
+  // Normalize by stripping leading zeros, but preserve a single "0" for the all-auctions case
+  auctionId = rawAuctionId.replace(/^0+(?=\d)/, "");
 } else if (rawAuctionId && !/^\d+$/.test(rawAuctionId)) {
   console.warn(
     `Warning: Invalid AUCTION_ID "${rawAuctionId}" — expected a decimal number. Falling back to "0".`,

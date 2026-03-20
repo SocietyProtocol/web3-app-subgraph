@@ -427,9 +427,11 @@ export function handleNewAuctionUser(event: NewUser): void {
 /** Returns the AuctionUser for userId, creating one if it doesn't exist yet.
  *  The authoritative address comes from the NewUser event (handleNewAuctionUser).
  *  fallbackAddress (event.transaction.from) is only used when the entity has
- *  not been seen yet — this can happen if NewUser was emitted before the filter
- *  start block, or in tests. Orders placed via placeSellOrdersOnBehalf will
- *  therefore carry the correct address once handleNewAuctionUser has run. */
+ *  not been seen yet — for example when indexing starts after the user was
+ *  created (NewUser emitted before the filter start block), or in tests.
+ *  In cases where the NewUser event is processed later, handleNewAuctionUser
+ *  will update the address; if NewUser was before the start block and thus
+ *  never indexed, the fallback address will remain. */
 function findOrCreateAuctionUser(
   userId: BigInt,
   fallbackAddress: Address,
@@ -446,7 +448,9 @@ function findOrCreateAuctionUser(
   return user;
 }
 
-export function handleOwnershipTransferred(_event: OwnershipTransferred): void {}
+export function handleOwnershipTransferred(
+  _event: OwnershipTransferred,
+): void {}
 
 export function handleUserRegistration(_event: UserRegistration): void {}
 
