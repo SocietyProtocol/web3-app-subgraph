@@ -33,15 +33,12 @@ import { getTokenList } from "./legitTokens";
 import { findOrCreateUser } from "./user";
 import { computeAuctionOutcome } from "./utils/clearing";
 import { getValuesFromOrderId } from "./utils/order";
+import { AUCTION_ID_FILTER } from "./auction-config";
 
 const ZERO = BigInt.zero();
 const ONE = BigInt.fromI32(1);
 const TEN = BigInt.fromString("10");
 const ZERO_BD = BigDecimal.zero();
-
-// Default auction filter. "0" means all auctions are indexed.
-// This mirrors the behavior expected from the generated `auction-config.ts`.
-const AUCTION_ID_FILTER = "0";
 
 /** Returns true when the given auctionId should be indexed.
  *  If AUCTION_ID_FILTER is "0" (default) every auction is indexed.
@@ -403,17 +400,22 @@ export function handleNewSellOrder(event: NewSellOrder): void {
 }
 
 export function handleNewAuctionUser(event: NewUser): void {
-  // When a filter is active, we have no auctionId here so we cannot know
-  // whether this user will ever participate in the target auction.
-  // Skip storage entirely; AuctionUser entities are created on-demand
-  // inside the already-filtered auction handlers via findOrCreateAuctionUser.
-  if (AUCTION_ID_FILTER != "0") return;
-
+  // Always record the userId -> userAddress mapping emitted by the contract.
+  // This is the only authoritative source of the address — relying on
+  // event.transaction.from is wrong when placeSellOrdersOnBehalf is used,
+  // because the tx sender differs from the actual order owner.
   log.info("Handling NewUser for user ID: {}", [
     event.params.userId.toString(),
   ]);
   let userId = event.params.userId;
   let userAddress = event.params.userAddress;
+  let existing = AuctionUser.load(userId.toString());
+  if (existing) {
+    // Update the address in case it was created with a fallback tx sender.
+    existing.address = userAddress;
+    existing.save();
+    return;
+  }
   let user = new AuctionUser(userId.toString());
   user.address = userAddress;
   const internalUser = findOrCreateUser(userAddress.toHexString());
@@ -422,29 +424,31 @@ export function handleNewAuctionUser(event: NewUser): void {
   user.save();
 }
 
-/** Creates an AuctionUser on first encounter using the caller's address
- *  derived from event.transaction.from (the EOA that called the contract).
- *  Only used when AUCTION_ID_FILTER is active so that no AuctionUser is
- *  ever written for a user who never touches the target auction. */
+/** Returns the AuctionUser for userId, creating one if it doesn't exist yet.
+ *  The authoritative address comes from the NewUser event (handleNewAuctionUser).
+ *  fallbackAddress (event.transaction.from) is only used when the entity has
+ *  not been seen yet — this can happen if NewUser was emitted before the filter
+ *  start block, or in tests. Orders placed via placeSellOrdersOnBehalf will
+ *  therefore carry the correct address once handleNewAuctionUser has run. */
 function findOrCreateAuctionUser(
   userId: BigInt,
-  address: Address,
+  fallbackAddress: Address,
 ): AuctionUser | null {
   let existing = AuctionUser.load(userId.toString());
   if (existing) return existing;
 
   let user = new AuctionUser(userId.toString());
-  user.address = address;
-  const internalUser = findOrCreateUser(address.toHexString());
+  user.address = fallbackAddress;
+  const internalUser = findOrCreateUser(fallbackAddress.toHexString());
   user.user = internalUser.id;
   user.auctions = new Array();
   user.save();
   return user;
 }
 
-export function handleOwnershipTransferred(event: OwnershipTransferred): void {}
+export function handleOwnershipTransferred(_event: OwnershipTransferred): void {}
 
-export function handleUserRegistration(event: UserRegistration): void {}
+export function handleUserRegistration(_event: UserRegistration): void {}
 
 export function getOrderEntityId(
   auctionId: BigInt,
