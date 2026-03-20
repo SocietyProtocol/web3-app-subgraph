@@ -62,6 +62,16 @@ type AuctionUser @entity(immutable: false) {
   orders: [Order!]! @derivedFrom(field: "auctionUser")
 }
 
+type LockTransaction @entity(immutable: true) {
+  id: ID!
+  userAddress: Bytes!
+  user: User
+  amount: BigInt!
+  lockDate: BigInt!
+  unlockDate: BigInt
+  type: String!
+}
+
 type AuctionDetail @entity(immutable: false) {
   id: ID!
   auctionId: BigInt!

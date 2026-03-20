@@ -92,3 +92,25 @@ dataSources:
         - event: UserRegistration(indexed address,uint64)
           handler: handleUserRegistration
       file: ./src/easy-auction.ts
+  - kind: ethereum
+    name: SocietyVipManager
+    network: { { network } }
+    source:
+      address: "{ { vipManager.address } }"
+      abi: SocietyVipManager
+      startBlock: { { vipManager.startBlock } }
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.9
+      language: wasm/assemblyscript
+      entities:
+        - LockTransaction
+      abis:
+        - name: SocietyVipManager
+          file: ./abis/SocietyVipManager.json
+      eventHandlers:
+        - event: TokensLocked(indexed address,uint256,uint256)
+          handler: handleTokensLocked
+        - event: TokensUnlocked(indexed address,uint256)
+          handler: handleTokensUnlocked
+      file: ./src/vip-manager.ts

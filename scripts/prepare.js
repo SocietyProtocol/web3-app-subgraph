@@ -50,6 +50,16 @@ template = template.replace(
   networkConfig.EasyAuction.startBlock,
 );
 
+// Replace vipManager placeholders
+template = template.replace(
+  "{ { vipManager.address } }",
+  networkConfig.vipManager.address,
+);
+template = template.replace(
+  "{ { vipManager.startBlock } }",
+  networkConfig.vipManager.startBlock,
+);
+
 // Write output
 const outputPath = path.join(__dirname, "..", "subgraph.yaml");
 fs.writeFileSync(outputPath, template);
@@ -75,6 +85,7 @@ console.log(
   `   - SocietyProtocolBadges: ${networkConfig.SocietyProtocolBadges.address}`,
 );
 console.log(`   - EasyAuction: ${networkConfig.EasyAuction.address}`);
+console.log(`   - SocietyVipManager: ${networkConfig.vipManager.address}`);
 console.log(
   `   - AUCTION_ID filter: ${auctionId === "0" ? "all auctions" : auctionId}`,
 );
