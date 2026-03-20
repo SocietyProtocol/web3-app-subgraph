@@ -33,12 +33,15 @@ import { getTokenList } from "./legitTokens";
 import { findOrCreateUser } from "./user";
 import { computeAuctionOutcome } from "./utils/clearing";
 import { getValuesFromOrderId } from "./utils/order";
-import { AUCTION_ID_FILTER } from "./auction-config";
 
 const ZERO = BigInt.zero();
 const ONE = BigInt.fromI32(1);
 const TEN = BigInt.fromString("10");
 const ZERO_BD = BigDecimal.zero();
+
+// Default auction filter. "0" means all auctions are indexed.
+// This mirrors the behavior expected from the generated `auction-config.ts`.
+const AUCTION_ID_FILTER = "0";
 
 /** Returns true when the given auctionId should be indexed.
  *  If AUCTION_ID_FILTER is "0" (default) every auction is indexed.
