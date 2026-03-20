@@ -26,6 +26,7 @@ type Badge @entity(immutable: false) {
   transferers: [Badge!]!
   holders: [User!]! @derivedFrom(field: "badges")
   holdersCount: BigInt!
+  profileUser: User
 }
 
 type _Schema_
@@ -59,6 +60,16 @@ type AuctionUser @entity(immutable: false) {
   auctions: [AuctionDetail!]!
   user: User
   orders: [Order!]! @derivedFrom(field: "auctionUser")
+}
+
+type LockTransaction @entity(immutable: true) {
+  id: ID!
+  userAddress: Bytes!
+  user: User
+  amount: BigInt!
+  lockDate: BigInt
+  unlockDate: BigInt!
+  type: String!
 }
 
 type AuctionDetail @entity(immutable: false) {

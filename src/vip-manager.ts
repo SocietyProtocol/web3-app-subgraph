@@ -1,0 +1,36 @@
+import {
+  TokensLocked,
+  TokensUnlocked,
+} from "../generated/SocietyVipManager/SocietyVipManager";
+import { LockTransaction } from "../generated/schema";
+import { findOrCreateUser } from "./user";
+
+export function handleTokensLocked(event: TokensLocked): void {
+  let userId = event.params.user.toHex();
+  let tx = new LockTransaction(event.transaction.hash.toHex());
+  tx.userAddress = event.params.user;
+
+  findOrCreateUser(event.params.user.toHexString());
+
+  tx.user = userId;
+  tx.amount = event.params.amount;
+  tx.lockDate = event.block.timestamp;
+  tx.unlockDate = event.params.unlockTime;
+  tx.type = "lock";
+  tx.save();
+}
+
+export function handleTokensUnlocked(event: TokensUnlocked): void {
+  let userId = event.params.user.toHex();
+  let tx = new LockTransaction(event.transaction.hash.toHex());
+  tx.userAddress = event.params.user;
+
+  findOrCreateUser(event.params.user.toHexString());
+
+  tx.user = userId;
+  tx.amount = event.params.amount;
+  tx.lockDate = null;
+  tx.unlockDate = event.block.timestamp;
+  tx.type = "claim";
+  tx.save();
+}

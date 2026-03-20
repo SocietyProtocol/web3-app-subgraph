@@ -1,12 +1,16 @@
 {
   "mainnet": {
     "SocietyProtocolBadges": {
-      "address": "0x0000000000000000000000000000000000000000",
-      "startBlock": 12000000
+      "address": "0xa3af0da9733061da88b91ea28740780a887c8ce3",
+      "startBlock": 24621677
     },
     "EasyAuction": {
       "address": "0x0b7fFc1f4AD541A4Ed16b40D8c37f0929158D101",
       "startBlock": 12135186
+    },
+    "vipManager": {
+      "address": "0x91715d95004Bd57eDC1E0FD718688CEd475E130A",
+      "startBlock": 24625474
     }
   },
   "sepolia": {
@@ -17,6 +21,10 @@
     "EasyAuction": {
       "address": "0x96aa924EF625bd8eF4A2C4d369408d1491453Ec5",
       "startBlock": 9860928
+    },
+    "vipManager": {
+      "address": "0x51B7481dDe7Fd0b793dbF0CAabcCd6B78D9790DF",
+      "startBlock": 10204023
     }
   }
 }

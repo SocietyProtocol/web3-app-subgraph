@@ -58,4 +58,35 @@ yarn prepare:mainnet
 yarn prepare:sepolia
 ```
 
-Note: Replace`yarn` with `npm run` in the above commands to use npm.
+Note: Replace `yarn` with `npm run` in the above commands to use npm.
+
+## Filtering by Auction ID
+
+By default the subgraph indexes **all** EasyAuction auctions. If you only need to track a single auction, set the `AUCTION_ID` environment variable before deploying.
+
+The `prepare` step reads `AUCTION_ID` and writes the filter value into `src/auction-config.ts`, which is then compiled into the subgraph WASM. Every auction-scoped event handler (`NewAuction`, `NewSellOrder`, `CancellationSellOrder`, `ClaimedFromOrder`, `AuctionCleared`) will silently skip events that do not match the configured auction.
+
+### How to use
+
+```bash
+# Index only auction #42 — mainnet
+AUCTION_ID=42 yarn deploy --deploy-key <YOUR_DEPLOY_KEY>
+
+# Index only auction #7 — testnet
+AUCTION_ID=7 yarn deploy:testnet --deploy-key <YOUR_DEPLOY_KEY>
+
+# Index all auctions (default — omit the variable or set it to 0)
+yarn deploy --deploy-key <YOUR_DEPLOY_KEY>
+```
+
+You can also regenerate `src/auction-config.ts` without deploying:
+
+```bash
+AUCTION_ID=42 yarn prepare:mainnet
+# or
+AUCTION_ID=42 yarn prepare:sepolia
+```
+
+> **Note:** `src/auction-config.ts` is auto-generated and should not be edited manually.
+> The file is committed with a default value of `"0"` (all auctions) so the project builds
+> out-of-the-box without setting the environment variable.

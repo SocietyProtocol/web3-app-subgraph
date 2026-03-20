@@ -294,6 +294,7 @@ describe("Society Protocol Badges Mappings", () => {
       handleProfileCreated(profileCreatedEvent);
 
       assert.fieldEquals("User", userAddress.toHexString(), "profile", "1");
+      assert.fieldEquals("Badge", "1", "profileUser", userAddress.toHexString());
 
       log.success("Profile badge set successfully", []);
     });
@@ -339,6 +340,7 @@ describe("Society Protocol Badges Mappings", () => {
       handleProfileCreated(profileCreatedEvent);
 
       assert.fieldEquals("User", userAddress.toHexString(), "profile", "10");
+      assert.fieldEquals("Badge", "10", "profileUser", userAddress.toHexString());
       assert.fieldEquals("User", userAddress.toHexString(), "name", "John Doe");
       assert.fieldEquals(
         "User",
@@ -382,6 +384,7 @@ describe("Society Protocol Badges Mappings", () => {
       handleProfileCreated(profileCreatedEvent);
 
       assert.fieldEquals("User", userAddress.toHexString(), "profile", "11");
+      assert.fieldEquals("Badge", "11", "profileUser", userAddress.toHexString());
       // Name should not be set since it wasn't a string
       const user11 = User.load(userAddress.toHexString());
       assert.assertNotNull(user11);
@@ -426,6 +429,7 @@ describe("Society Protocol Badges Mappings", () => {
       handleProfileCreated(profileCreatedEvent);
 
       assert.fieldEquals("User", userAddress.toHexString(), "profile", "12");
+      assert.fieldEquals("Badge", "12", "profileUser", userAddress.toHexString());
       // Bio should not be set since it wasn't a string
       const user12 = User.load(userAddress.toHexString());
       assert.assertNotNull(user12);
@@ -465,6 +469,7 @@ describe("Society Protocol Badges Mappings", () => {
       handleProfileCreated(profileCreatedEvent);
 
       assert.fieldEquals("User", userAddress.toHexString(), "profile", "13");
+      assert.fieldEquals("Badge", "13", "profileUser", userAddress.toHexString());
       // ImageUrl should not be set since it wasn't a string
       const user13 = User.load(userAddress.toHexString());
       assert.assertNotNull(user13);
@@ -531,6 +536,95 @@ describe("Society Protocol Badges Mappings", () => {
       assert.assertNull(badge14!.imageUrl);
 
       log.success("URI updated with invalid metadata handled gracefully", []);
+    });
+
+    test("Should update profile user metadata when URI changes on a profile badge", () => {
+      const ipfsHash = "QmNewProfileMeta";
+      const userAddress = Address.fromString(
+        "0x5eA1474CeFA1ea5986327F97932B587deD802CF7",
+      );
+      createAndSaveUser(userAddress, new Array());
+
+      const badge = createAndSaveBadge("30", "Profile Badge", true, "");
+      badge.isProfile = true;
+      badge.profileUser = userAddress.toHexString();
+      badge.save();
+
+      mockIpfsFile(
+        ipfsHash,
+        "tests/badges/ipfs-mocks/valid-profile-metadata.json",
+      );
+
+      const uriEvent = createURIEvent(BigInt.fromI32(30), `ipfs://${ipfsHash}`);
+
+      handleURI(uriEvent);
+
+      assert.fieldEquals("Badge", "30", "uri", `ipfs://${ipfsHash}`);
+      assert.fieldEquals("User", userAddress.toHexString(), "name", "John Doe");
+      assert.fieldEquals(
+        "User",
+        userAddress.toHexString(),
+        "bio",
+        "Software developer and blockchain enthusiast",
+      );
+      assert.fieldEquals(
+        "User",
+        userAddress.toHexString(),
+        "imageUrl",
+        "https://example.com/profile.png",
+      );
+
+      log.success("Profile user metadata updated when URI changes", []);
+    });
+
+    test("Should not update user when URI changes on a non-profile badge", () => {
+      const userAddress = Address.fromString(
+        "0x5eA1474CeFA1ea5986327F97932B587deD802CF7",
+      );
+      createAndSaveUser(userAddress, new Array());
+      createAndSaveBadge("31", "Regular Badge", false, "");
+
+      const uriEvent = createURIEvent(
+        BigInt.fromI32(31),
+        "https://example.com/regular.json",
+      );
+
+      handleURI(uriEvent);
+
+      assert.fieldEquals(
+        "Badge",
+        "31",
+        "uri",
+        "https://example.com/regular.json",
+      );
+      const user = User.load(userAddress.toHexString());
+      assert.assertNotNull(user);
+      assert.assertNull(user!.name);
+
+      log.success("Non-profile badge URI change does not affect user", []);
+    });
+
+    test("Should not crash when profile badge has no profileUser set", () => {
+      const badge = createAndSaveBadge("32", "Orphan Profile", true, "");
+      badge.isProfile = true;
+      // profileUser intentionally left null
+      badge.save();
+
+      const uriEvent = createURIEvent(
+        BigInt.fromI32(32),
+        "https://example.com/orphan.json",
+      );
+
+      handleURI(uriEvent);
+
+      assert.fieldEquals(
+        "Badge",
+        "32",
+        "uri",
+        "https://example.com/orphan.json",
+      );
+
+      log.success("Profile badge with no profileUser handled gracefully", []);
     });
   });
 
