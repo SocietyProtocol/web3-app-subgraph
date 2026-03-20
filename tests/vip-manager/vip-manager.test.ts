@@ -7,7 +7,10 @@ import {
   test,
 } from "matchstick-as/assembly/index";
 
-import { handleTokensLocked, handleTokensUnlocked } from "../../src/vip-manager";
+import {
+  handleTokensLocked,
+  handleTokensUnlocked,
+} from "../../src/vip-manager";
 import {
   userAddress1,
   userAddress2,
@@ -29,7 +32,7 @@ describe("VipManager — handleTokensLocked", () => {
       userAddress1,
       lockAmount1,
       unlockTime1,
-      lockTimestamp
+      lockTimestamp,
     );
     handleTokensLocked(event);
 
@@ -37,21 +40,59 @@ describe("VipManager — handleTokensLocked", () => {
 
     assert.entityCount("LockTransaction", 1);
     assert.fieldEquals("LockTransaction", txId, "type", "lock");
-    assert.fieldEquals("LockTransaction", txId, "userAddress", userAddress1.toLowerCase());
-    assert.fieldEquals("LockTransaction", txId, "user", userAddress1.toLowerCase());
-    assert.fieldEquals("LockTransaction", txId, "amount", lockAmount1.toString());
-    assert.fieldEquals("LockTransaction", txId, "lockDate", lockTimestamp.toString());
-    assert.fieldEquals("LockTransaction", txId, "unlockDate", unlockTime1.toString());
+    assert.fieldEquals(
+      "LockTransaction",
+      txId,
+      "userAddress",
+      userAddress1.toLowerCase(),
+    );
+    assert.fieldEquals(
+      "LockTransaction",
+      txId,
+      "user",
+      userAddress1.toLowerCase(),
+    );
+    assert.fieldEquals(
+      "LockTransaction",
+      txId,
+      "amount",
+      lockAmount1.toString(),
+    );
+    assert.fieldEquals(
+      "LockTransaction",
+      txId,
+      "lockDate",
+      lockTimestamp.toString(),
+    );
+    assert.fieldEquals(
+      "LockTransaction",
+      txId,
+      "unlockDate",
+      unlockTime1.toString(),
+    );
 
-    log.success("handleTokensLocked creates LockTransaction with correct fields", []);
+    log.success(
+      "handleTokensLocked creates LockTransaction with correct fields",
+      [],
+    );
   });
 
   test("each lock call creates a separate LockTransaction", () => {
     handleTokensLocked(
-      createTokensLockedEvent(userAddress1, lockAmount1, unlockTime1, lockTimestamp)
+      createTokensLockedEvent(
+        userAddress1,
+        lockAmount1,
+        unlockTime1,
+        lockTimestamp,
+      ),
     );
     handleTokensLocked(
-      createTokensLockedEvent(userAddress1, lockAmount2, unlockTime2, lockTimestamp + 1000)
+      createTokensLockedEvent(
+        userAddress1,
+        lockAmount2,
+        unlockTime2,
+        lockTimestamp + 1000,
+      ),
     );
 
     assert.entityCount("LockTransaction", 2);
@@ -64,13 +105,13 @@ describe("VipManager — handleTokensLocked", () => {
       userAddress1,
       lockAmount1,
       unlockTime1,
-      lockTimestamp
+      lockTimestamp,
     );
     let event2 = createTokensLockedEvent(
       userAddress2,
       lockAmount2,
       unlockTime2,
-      lockTimestamp + 1
+      lockTimestamp + 1,
     );
     handleTokensLocked(event1);
     handleTokensLocked(event2);
@@ -80,13 +121,13 @@ describe("VipManager — handleTokensLocked", () => {
       "LockTransaction",
       event1.transaction.hash.toHex(),
       "amount",
-      lockAmount1.toString()
+      lockAmount1.toString(),
     );
     assert.fieldEquals(
       "LockTransaction",
       event2.transaction.hash.toHex(),
       "amount",
-      lockAmount2.toString()
+      lockAmount2.toString(),
     );
 
     log.success("multiple users get independent LockTransactions", []);
@@ -100,13 +141,18 @@ describe("VipManager — handleTokensUnlocked", () => {
 
   test("creates a LockTransaction with type claim and correct fields", () => {
     handleTokensLocked(
-      createTokensLockedEvent(userAddress1, lockAmount1, unlockTime1, lockTimestamp)
+      createTokensLockedEvent(
+        userAddress1,
+        lockAmount1,
+        unlockTime1,
+        lockTimestamp,
+      ),
     );
 
     let unlockEvent = createTokensUnlockedEvent(
       userAddress1,
       lockAmount1,
-      lockTimestamp + 1
+      lockTimestamp + 1,
     );
     handleTokensUnlocked(unlockEvent);
 
@@ -114,10 +160,26 @@ describe("VipManager — handleTokensUnlocked", () => {
 
     assert.entityCount("LockTransaction", 2);
     assert.fieldEquals("LockTransaction", txId, "type", "claim");
-    assert.fieldEquals("LockTransaction", txId, "userAddress", userAddress1.toLowerCase());
-    assert.fieldEquals("LockTransaction", txId, "user", userAddress1.toLowerCase());
-    assert.fieldEquals("LockTransaction", txId, "amount", lockAmount1.toString());
-    assert.fieldEquals("LockTransaction", txId, "unlockDate", "null");
+    assert.fieldEquals(
+      "LockTransaction",
+      txId,
+      "userAddress",
+      userAddress1.toLowerCase(),
+    );
+    assert.fieldEquals(
+      "LockTransaction",
+      txId,
+      "user",
+      userAddress1.toLowerCase(),
+    );
+    assert.fieldEquals(
+      "LockTransaction",
+      txId,
+      "amount",
+      lockAmount1.toString(),
+    );
+
+    assert.assertNull(txId);
 
     log.success("handleTokensUnlocked creates claim LockTransaction", []);
   });
@@ -127,22 +189,27 @@ describe("VipManager — handleTokensUnlocked", () => {
       userAddress2,
       lockAmount2,
       unlockTime2,
-      lockTimestamp + 1
+      lockTimestamp + 1,
     );
     handleTokensLocked(
-      createTokensLockedEvent(userAddress1, lockAmount1, unlockTime1, lockTimestamp)
+      createTokensLockedEvent(
+        userAddress1,
+        lockAmount1,
+        unlockTime1,
+        lockTimestamp,
+      ),
     );
     handleTokensLocked(lockEvent2);
 
     handleTokensUnlocked(
-      createTokensUnlockedEvent(userAddress1, lockAmount1, lockTimestamp + 2)
+      createTokensUnlockedEvent(userAddress1, lockAmount1, lockTimestamp + 2),
     );
 
     assert.fieldEquals(
       "LockTransaction",
       lockEvent2.transaction.hash.toHex(),
       "type",
-      "lock"
+      "lock",
     );
 
     log.success("handleTokensUnlocked does not affect other users", []);
@@ -152,7 +219,7 @@ describe("VipManager — handleTokensUnlocked", () => {
     let unlockEvent = createTokensUnlockedEvent(
       userAddress1,
       lockAmount1,
-      lockTimestamp
+      lockTimestamp,
     );
     handleTokensUnlocked(unlockEvent);
 
@@ -161,9 +228,12 @@ describe("VipManager — handleTokensUnlocked", () => {
       "LockTransaction",
       unlockEvent.transaction.hash.toHex(),
       "type",
-      "claim"
+      "claim",
     );
 
-    log.success("handleTokensUnlocked records claim even with no prior lock tx", []);
+    log.success(
+      "handleTokensUnlocked records claim even with no prior lock tx",
+      [],
+    );
   });
 });
