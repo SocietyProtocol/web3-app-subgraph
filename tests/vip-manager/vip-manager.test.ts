@@ -179,7 +179,12 @@ describe("VipManager — handleTokensUnlocked", () => {
       lockAmount1.toString(),
     );
 
-    assert.assertNull(txId);
+    assert.fieldEquals(
+      "LockTransaction",
+      txId,
+      "unlockDate",
+      (lockTimestamp + 1).toString(),
+    );
 
     log.success("handleTokensUnlocked creates claim LockTransaction", []);
   });

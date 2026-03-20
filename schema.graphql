@@ -67,8 +67,8 @@ type LockTransaction @entity(immutable: true) {
   userAddress: Bytes!
   user: User
   amount: BigInt!
-  lockDate: BigInt!
-  unlockDate: BigInt
+  lockDate: BigInt
+  unlockDate: BigInt!
   type: String!
 }
 

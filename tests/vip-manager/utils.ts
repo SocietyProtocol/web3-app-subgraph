@@ -12,13 +12,20 @@ export const contractAddress = Address.fromString(vipManagerContractAddress);
 // newMockEventWithParams always returns the same hardcoded transaction hash.
 // Encode blockTimestamp into the last 4 bytes of a 32-byte hash so that
 // events with distinct timestamps produce distinct tx hashes.
+function byteToHex(b: i32): string {
+  const chars = "0123456789abcdef";
+  return chars.charAt((b >> 4) & 0xf) + chars.charAt(b & 0xf);
+}
+
 function hashFromTimestamp(blockTimestamp: i32): Bytes {
-  let hash = new Bytes(32); // zero-initialised
-  hash[28] = u8((blockTimestamp >> 24) & 0xff);
-  hash[29] = u8((blockTimestamp >> 16) & 0xff);
-  hash[30] = u8((blockTimestamp >> 8) & 0xff);
-  hash[31] = u8(blockTimestamp & 0xff);
-  return hash;
+  // 0x + 56 zero hex chars (28 bytes) + 8 hex chars from timestamp (4 bytes) = 32 bytes total
+  return Bytes.fromHexString(
+    "0x00000000000000000000000000000000000000000000000000000000" +
+      byteToHex((blockTimestamp >> 24) & 0xff) +
+      byteToHex((blockTimestamp >> 16) & 0xff) +
+      byteToHex((blockTimestamp >> 8) & 0xff) +
+      byteToHex(blockTimestamp & 0xff)
+  );
 }
 
 export function createTokensLockedEvent(

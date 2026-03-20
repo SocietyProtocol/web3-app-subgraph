@@ -29,8 +29,8 @@ export function handleTokensUnlocked(event: TokensUnlocked): void {
 
   tx.user = userId;
   tx.amount = event.params.amount;
-  tx.lockDate = event.block.timestamp;
-  tx.unlockDate = null;
+  tx.lockDate = null;
+  tx.unlockDate = event.block.timestamp;
   tx.type = "claim";
   tx.save();
 }
