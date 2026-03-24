@@ -400,26 +400,34 @@ export function handleNewSellOrder(event: NewSellOrder): void {
 }
 
 export function handleNewAuctionUser(event: NewUser): void {
-  // Always record the userId -> userAddress mapping emitted by the contract.
-  // This is the only authoritative source of the address — relying on
-  // event.transaction.from is wrong when placeSellOrdersOnBehalf is used,
-  // because the tx sender differs from the actual order owner.
-  log.info("Handling NewUser for user ID: {}", [
-    event.params.userId.toString(),
-  ]);
   let userId = event.params.userId;
   let userAddress = event.params.userAddress;
+
+  if (AUCTION_ID_FILTER != "0") {
+    // Filter is active: do NOT create new entities for users who may never
+    // interact with the target auction (preserves the storage optimisation).
+    // Only correct the address if the entity was already created on-demand via
+    // findOrCreateAuctionUser (which uses transaction.from as a fallback and
+    // therefore may hold the wrong address for placeSellOrdersOnBehalf orders).
+    let existing = AuctionUser.load(userId.toString());
+    if (existing !== null) {
+      existing.address = userAddress;
+      existing.save();
+    }
+    return;
+  }
+
+  // Filter is off — index all users.
+  log.info("Handling NewUser for user ID: {}", [userId.toString()]);
   let existing = AuctionUser.load(userId.toString());
-  if (existing) {
-    // Update the address in case it was created with a fallback tx sender.
+  if (existing !== null) {
     existing.address = userAddress;
     existing.save();
     return;
   }
   let user = new AuctionUser(userId.toString());
   user.address = userAddress;
-  const internalUser = findOrCreateUser(userAddress.toHexString());
-  user.user = internalUser.id;
+  user.user = findOrCreateUser(userAddress.toHexString()).id;
   user.auctions = new Array();
   user.save();
 }
@@ -435,7 +443,7 @@ export function handleNewAuctionUser(event: NewUser): void {
 function findOrCreateAuctionUser(
   userId: BigInt,
   fallbackAddress: Address,
-): AuctionUser | null {
+): AuctionUser {
   let existing = AuctionUser.load(userId.toString());
   if (existing) return existing;
 
