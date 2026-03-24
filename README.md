@@ -1,54 +1,36 @@
 # Society Protocol Badges Subgraph
 
-This repository holds the subgraph code used to index the smart contracts events using the Graph.
+This repository holds the subgraph code used to index smart contract events with The Graph.
 
-## Getting Started
+## Prerequisites
 
-Basic commands to get started with the subgraph.
+- Node.js and Yarn
+- Graph CLI (installed through project dependencies)
+- A Graph Studio deploy key for hosted deployments
+
+## Install
 
 ```bash
 # Install dependencies
 yarn install
+```
 
-# Generate types
+## Build and Test
+
+```bash
+# Generates subgraph.yaml for sepolia, writes src/auction-config.ts, then runs graph codegen
 yarn codegen
 
-# Build
+# Builds the subgraph from subgraph.yaml
 yarn build
 
-# Test
+# Runs matchstick unit tests
 yarn test
 ```
 
-## Network Configuration
+## How Configuration Is Generated
 
-Network configurations are defined in [networks.json](networks.json). Each network includes:
-
-- Contract addresses for `SocietyProtocolBadges` and `EasyAuction`
-- Start blocks for indexing
-
-Available networks:
-
-- `mainnet`: Ethereum mainnet
-- `sepolia`: Sepolia testnet
-
-To add a new network, edit `networks.json` and add the configuration.
-
-### Deploy to individual networks
-
-The deployment commands automatically generate the `subgraph.yaml` from `subgraph.template.yaml` using the network configuration:
-
-```bash
-# Deploy to mainnet
-# This runs: prepare:mainnet -> codegen -> build -> deploy
-yarn deploy --deploy-key <YOUR_DEPLOY_KEY>
-
-# Deploy to testnet (sepolia)
-# This runs: prepare:sepolia -> codegen -> build -> deploy
-yarn deploy:testnet --deploy-key <YOUR_DEPLOY_KEY>
-```
-
-You can also manually prepare the subgraph.yaml for a specific network:
+`subgraph.yaml` is generated from `subgraph.template.yaml` using `networks.json`:
 
 ```bash
 # Generate subgraph.yaml for mainnet
@@ -58,28 +40,101 @@ yarn prepare:mainnet
 yarn prepare:sepolia
 ```
 
-Note: Replace `yarn` with `npm run` in the above commands to use npm.
+During `prepare:*`, the script also generates `src/auction-config.ts` from `AUCTION_ID`.
 
-## Filtering by Auction ID
+- `AUCTION_ID` unset or `0`: index all auctions
+- `AUCTION_ID=<decimal number>`: index only that auction ID (for example, `42`)
+- Invalid values: fallback to `0` with a warning
 
-By default the subgraph indexes **all** EasyAuction auctions. If you only need to track a single auction, set the `AUCTION_ID` environment variable before deploying.
+## Network Configuration
 
-The `prepare` step reads `AUCTION_ID` and writes the filter value into `src/auction-config.ts`, which is then compiled into the subgraph WASM. Every auction-scoped event handler (`NewAuction`, `NewSellOrder`, `CancellationSellOrder`, `ClaimedFromOrder`, `AuctionCleared`) will silently skip events that do not match the configured auction.
+Network configurations are defined in [networks.json](networks.json). Each network includes:
 
-### How to use
+- Contract addresses for `SocietyProtocolBadges`, `EasyAuction`, and `vipManager`
+- Start blocks for indexing
+
+Available networks:
+
+- `mainnet`: Ethereum mainnet
+- `sepolia`: Sepolia testnet
+
+To add a new network, edit `networks.json` and add the configuration.
+
+## Deploy to Graph Studio
+
+The deploy scripts run all required steps in order:
+
+- `prepare:<network>`
+- `graph codegen`
+- `graph build`
+- `graph deploy`
+
+### Mainnet deploy
 
 ```bash
-# Index only auction #42 — mainnet
-AUCTION_ID=42 yarn deploy --deploy-key <YOUR_DEPLOY_KEY>
-
-# Index only auction #7 — testnet
-AUCTION_ID=7 yarn deploy:testnet --deploy-key <YOUR_DEPLOY_KEY>
-
-# Index all auctions (default — omit the variable or set it to 0)
 yarn deploy --deploy-key <YOUR_DEPLOY_KEY>
 ```
 
-You can also regenerate `src/auction-config.ts` without deploying:
+This deploys to Graph Studio subgraph name `society-mainnet`.
+
+### Sepolia deploy
+
+```bash
+yarn deploy:testnet --deploy-key <YOUR_DEPLOY_KEY>
+```
+
+This deploys to Graph Studio subgraph name `society-testnet`.
+
+## Run and Deploy Locally (graph-node + IPFS + Postgres)
+
+Start local services:
+
+```bash
+docker compose up -d
+```
+
+Create the local subgraph:
+
+```bash
+yarn create-local
+```
+
+Deploy to local graph-node:
+
+```bash
+yarn deploy-local
+```
+
+Remove local subgraph:
+
+```bash
+yarn remove-local
+```
+
+Local endpoints used by scripts:
+
+- Graph node admin: `http://localhost:8020/`
+- IPFS API: `http://localhost:5001`
+
+## Deploying a Single Auction Only
+
+Set `AUCTION_ID` before any command that runs `prepare:*` (including deploy commands):
+
+```bash
+# Mainnet: index only auction 42
+AUCTION_ID=42 yarn deploy --deploy-key <YOUR_DEPLOY_KEY>
+
+# Sepolia: index only auction 7
+AUCTION_ID=7 yarn deploy:testnet --deploy-key <YOUR_DEPLOY_KEY>
+
+# Local deploy filtered to auction 42
+AUCTION_ID=42 yarn deploy-local
+
+# Index all auctions (default)
+yarn deploy --deploy-key <YOUR_DEPLOY_KEY>
+```
+
+You can regenerate only the config files without deploying:
 
 ```bash
 AUCTION_ID=42 yarn prepare:mainnet
@@ -87,6 +142,19 @@ AUCTION_ID=42 yarn prepare:mainnet
 AUCTION_ID=42 yarn prepare:sepolia
 ```
 
-> **Note:** `src/auction-config.ts` is auto-generated by the `prepare`/`codegen` scripts and should not be edited manually.
-> The file is created when you run `yarn prepare:*` or `yarn codegen`, based on the `AUCTION_ID` environment variable.
-> If you omit `AUCTION_ID` or set it to `0`, the generated configuration will index all auctions by default.
+> `src/auction-config.ts` is auto-generated by `scripts/prepare.js` and should not be edited manually.
+
+## Script Reference
+
+- `yarn prepare:mainnet`: generate `subgraph.yaml` for mainnet + generate `src/auction-config.ts`
+- `yarn prepare:sepolia`: generate `subgraph.yaml` for sepolia + generate `src/auction-config.ts`
+- `yarn codegen`: runs `prepare:sepolia` first, then `graph codegen`
+- `yarn build`: runs `graph build`
+- `yarn deploy`: mainnet prepare + codegen + build + deploy (`society-mainnet`)
+- `yarn deploy:testnet`: sepolia prepare + codegen + build + deploy (`society-testnet`)
+- `yarn create-local`: create local subgraph on `http://localhost:8020/`
+- `yarn deploy-local`: mainnet prepare + codegen + build + deploy to local graph-node/IPFS
+- `yarn remove-local`: remove local subgraph from `http://localhost:8020/`
+- `yarn test`: run matchstick tests
+
+Note: replace `yarn <script>` with `npm run <script>` if you use npm.
