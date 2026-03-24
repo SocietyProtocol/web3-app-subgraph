@@ -400,48 +400,67 @@ export function handleNewSellOrder(event: NewSellOrder): void {
 }
 
 export function handleNewAuctionUser(event: NewUser): void {
-  // When a filter is active, we have no auctionId here so we cannot know
-  // whether this user will ever participate in the target auction.
-  // Skip storage entirely; AuctionUser entities are created on-demand
-  // inside the already-filtered auction handlers via findOrCreateAuctionUser.
-  if (AUCTION_ID_FILTER != "0") return;
-
-  log.info("Handling NewUser for user ID: {}", [
-    event.params.userId.toString(),
-  ]);
   let userId = event.params.userId;
   let userAddress = event.params.userAddress;
+
+  if (AUCTION_ID_FILTER != "0") {
+    // Filter is active: do NOT create new entities for users who may never
+    // interact with the target auction (preserves the storage optimisation).
+    // Only correct the address if the entity was already created on-demand via
+    // findOrCreateAuctionUser (which uses transaction.from as a fallback and
+    // therefore may hold the wrong address for placeSellOrdersOnBehalf orders).
+    let existing = AuctionUser.load(userId.toString());
+    if (existing !== null) {
+      existing.address = userAddress;
+      existing.save();
+    }
+    return;
+  }
+
+  // Filter is off — index all users.
+  log.info("Handling NewUser for user ID: {}", [userId.toString()]);
+  let existing = AuctionUser.load(userId.toString());
+  if (existing !== null) {
+    existing.address = userAddress;
+    existing.save();
+    return;
+  }
   let user = new AuctionUser(userId.toString());
   user.address = userAddress;
-  const internalUser = findOrCreateUser(userAddress.toHexString());
-  user.user = internalUser.id;
+  user.user = findOrCreateUser(userAddress.toHexString()).id;
   user.auctions = new Array();
   user.save();
 }
 
-/** Creates an AuctionUser on first encounter using the caller's address
- *  derived from event.transaction.from (the EOA that called the contract).
- *  Only used when AUCTION_ID_FILTER is active so that no AuctionUser is
- *  ever written for a user who never touches the target auction. */
+/** Returns the AuctionUser for userId, creating one if it doesn't exist yet.
+ *  The authoritative address comes from the NewUser event (handleNewAuctionUser).
+ *  fallbackAddress (event.transaction.from) is only used when the entity has
+ *  not been seen yet — for example when indexing starts after the user was
+ *  created (NewUser emitted before the filter start block), or in tests.
+ *  In cases where the NewUser event is processed later, handleNewAuctionUser
+ *  will update the address; if NewUser was before the start block and thus
+ *  never indexed, the fallback address will remain. */
 function findOrCreateAuctionUser(
   userId: BigInt,
-  address: Address,
-): AuctionUser | null {
+  fallbackAddress: Address,
+): AuctionUser {
   let existing = AuctionUser.load(userId.toString());
   if (existing) return existing;
 
   let user = new AuctionUser(userId.toString());
-  user.address = address;
-  const internalUser = findOrCreateUser(address.toHexString());
+  user.address = fallbackAddress;
+  const internalUser = findOrCreateUser(fallbackAddress.toHexString());
   user.user = internalUser.id;
   user.auctions = new Array();
   user.save();
   return user;
 }
 
-export function handleOwnershipTransferred(event: OwnershipTransferred): void {}
+export function handleOwnershipTransferred(
+  _event: OwnershipTransferred,
+): void {}
 
-export function handleUserRegistration(event: UserRegistration): void {}
+export function handleUserRegistration(_event: UserRegistration): void {}
 
 export function getOrderEntityId(
   auctionId: BigInt,
