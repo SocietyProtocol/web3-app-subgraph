@@ -7,11 +7,7 @@ import {
   CommunityRegistry,
 } from "../generated/CommunityRegistry/CommunityRegistry";
 import { findOrCreateUser } from "./user";
-import {
-  fetchIpfsMetadata,
-  getStringFromTypedMap,
-  tierFromMetadata,
-} from "./utils/metadata";
+import { fetchIpfsMetadata, getStringFromTypedMap } from "./utils/metadata";
 
 /**
  * CommunityBadgeCreated fires for any community-scoped badge created via
@@ -88,30 +84,41 @@ export function handleCommunityCreated(event: CommunityCreated): void {
     manager.save();
   }
 
-  // Clone imageUrl from the manager badge; read tier from its URI metadata
-  const managerBadge = Badge.load(managerBadgeId);
-  if (managerBadge != null) {
-    const badgeImageUrl = managerBadge.imageUrl;
-    if (badgeImageUrl != null) {
-      community.imageUrl = badgeImageUrl;
-    }
+  // Ensure the manager badge exists before saving the community, since
+  // Community.managerBadge is non-nullable in the schema.
+  let managerBadge = Badge.load(managerBadgeId);
+  if (managerBadge == null) {
+    managerBadge = new Badge(managerBadgeId);
+    managerBadge.name = `${community.name} Manager`;
+    managerBadge.isOfficial = false;
+    managerBadge.isCommunity = true;
+    managerBadge.isProfile = false;
+    managerBadge.creatorAddress = creatorAddress;
+    managerBadge.createdAt = event.block.timestamp;
+    managerBadge.communityId = communityId;
+    managerBadge.save();
+  }
 
-    const metaData = fetchIpfsMetadata(managerBadge.uri);
+  const badgeImageUrl = managerBadge.imageUrl;
+  if (badgeImageUrl != null) {
+    community.imageUrl = badgeImageUrl;
+  }
 
-    if (metaData !== null) {
-      const tier = getStringFromTypedMap(metaData, "tier");
-      if (tier !== null) {
-        community.tier = tier;
-      }
-    } else {
-      community.tier = "unaffiliated";
-    }
+  const metaData = fetchIpfsMetadata(managerBadge.uri);
 
-    // Ensure manager badge is linked (may already be set by handleCommunityBadgeCreated)
-    if (managerBadge.communityId == null) {
-      managerBadge.communityId = communityId;
-      managerBadge.save();
+  if (metaData !== null) {
+    const tier = getStringFromTypedMap(metaData, "tier");
+    if (tier !== null) {
+      community.tier = tier;
     }
+  } else {
+    community.tier = "unaffiliated";
+  }
+
+  // Ensure manager badge is linked (may already be set by handleCommunityBadgeCreated)
+  if (managerBadge.communityId == null) {
+    managerBadge.communityId = communityId;
+    managerBadge.save();
   }
 
   community.save();

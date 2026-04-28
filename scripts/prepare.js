@@ -63,8 +63,8 @@ template = template.replace(
 // Handle optional CommunityRegistry block
 if (networkConfig.CommunityRegistry) {
   // Remove the conditional markers and replace placeholders
-  template = template.replace(/^# \{\{#CommunityRegistry\}\}\n/m, "");
-  template = template.replace(/^# \{\{\/CommunityRegistry\}\}\n?/m, "");
+  template = template.replace(/^\s*# \{\{#CommunityRegistry\}\}\n/m, "");
+  template = template.replace(/^\s*# \{\{\/CommunityRegistry\}\}\n?/m, "");
   template = template.replace(
     "{ { CommunityRegistry.address } }",
     networkConfig.CommunityRegistry.address,
@@ -76,7 +76,7 @@ if (networkConfig.CommunityRegistry) {
 } else {
   // Remove the entire CommunityRegistry block including its markers
   template = template.replace(
-    /^# \{\{#CommunityRegistry\}\}[\s\S]*?^# \{\{\/CommunityRegistry\}\}\n?/m,
+    /^\s*# \{\{#CommunityRegistry\}\}[\s\S]*?^\s*# \{\{\/CommunityRegistry\}\}\n?/m,
     "",
   );
 }

@@ -13,12 +13,7 @@ import {
   URI,
 } from "../generated/SocietyProtocolBadges/SocietyProtocolBadges";
 import { findOrCreateUser } from "./user";
-import {
-  applyIpfsMetadataToUser,
-  fetchIpfsMetadata,
-  getImageUrlFromIpfsUri,
-  getStringFromTypedMap,
-} from "./utils/metadata";
+import { fetchIpfsMetadata, getStringFromTypedMap } from "./utils/metadata";
 
 const findOrCreateBadge = (badgeId: string, creator: string): Badge => {
   let badge = Badge.load(badgeId);
@@ -82,7 +77,13 @@ export function handleBadgeCreated(event: BadgeCreated): void {
     badge.uri = "";
   }
 
-  badge.imageUrl = getImageUrlFromIpfsUri(badge.uri);
+  const metadata = fetchIpfsMetadata(badge.uri);
+
+  if (metadata !== null) {
+    badge.imageUrl = getStringFromTypedMap(metadata, "imageUrl");
+  } else {
+    badge.imageUrl = null;
+  }
 
   badge.save();
 }
@@ -100,7 +101,13 @@ export function handleBadgeModified(event: BadgeModified): void {
   badge.isOfficial = event.params.isOfficial;
   badge.isCommunity = event.params.isCommunity;
   badge.uri = event.params.metadataURI;
-  badge.imageUrl = getImageUrlFromIpfsUri(event.params.metadataURI);
+  const metadata = fetchIpfsMetadata(badge.uri);
+
+  if (metadata !== null) {
+    badge.imageUrl = getStringFromTypedMap(metadata, "imageUrl");
+  } else {
+    badge.imageUrl = null;
+  }
 
   badge.save();
 }
@@ -136,7 +143,9 @@ export function handleProfileCreated(event: ProfileCreated): void {
 
   const metaData = fetchIpfsMetadata(badge.uri);
   if (metaData !== null) {
-    applyIpfsMetadataToUser(user, metaData);
+    user.name = getStringFromTypedMap(metaData, "name");
+    user.bio = getStringFromTypedMap(metaData, "bio");
+    user.imageUrl = getStringFromTypedMap(metaData, "imageUrl");
   }
 
   user.save();
@@ -163,7 +172,9 @@ export function handleURI(event: URI): void {
   if (badge.isProfile && badge.profileUser != null) {
     const user = User.load(badge.profileUser!);
     if (user != null && metaData !== null) {
-      applyIpfsMetadataToUser(user, metaData);
+      user.name = getStringFromTypedMap(metaData, "name");
+      user.bio = getStringFromTypedMap(metaData, "bio");
+      user.imageUrl = getStringFromTypedMap(metaData, "imageUrl");
       user.save();
     }
   }

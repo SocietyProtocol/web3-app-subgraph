@@ -6,7 +6,6 @@ import {
   log,
   TypedMap,
 } from "@graphprotocol/graph-ts";
-import { User } from "../../generated/schema";
 
 /** Returns the IPFS CID/hash from an ipfs:// or /ipfs/ URI, or empty string. */
 export function ipfsHashFromUri(uri: string | null): string {
@@ -50,49 +49,4 @@ export function getStringFromTypedMap(
     return value.toString();
   }
   return null;
-}
-
-/** Fetches IPFS metadata for the URI and returns the `imageUrl` field, or null. */
-export function getImageUrlFromIpfsUri(uri: string | null): string | null {
-  const metadata = fetchIpfsMetadata(uri);
-  if (metadata !== null) {
-    log.info("IPFS metadata found for uri: {}", [uri ? uri : "null"]);
-    return getStringFromTypedMap(metadata, "imageUrl");
-  } else {
-    log.info("No IPFS metadata found for uri: {}", [uri ? uri : "null"]);
-  }
-  return null;
-}
-
-/** Returns the `tier` string from parsed IPFS metadata, or null if absent. */
-export function tierFromMetadata(
-  metadata: TypedMap<string, JSONValue> | null,
-): string | null {
-  if (metadata === null) return null;
-  const entry = metadata.get("tier");
-  if (entry !== null && entry.kind === JSONValueKind.STRING) {
-    return entry.toString();
-  }
-  return null;
-}
-
-/** Applies IPFS profile metadata fields (name, bio, imageUrl) to a User entity. */
-export function applyIpfsMetadataToUser(
-  user: User,
-  metadata: TypedMap<string, JSONValue>,
-): void {
-  const name = metadata.get("name");
-  if (name !== null && name.kind === JSONValueKind.STRING) {
-    user.name = name.toString();
-  }
-
-  const bio = metadata.get("bio");
-  if (bio !== null && bio.kind === JSONValueKind.STRING) {
-    user.bio = bio.toString();
-  }
-
-  const imageUrl = metadata.get("imageUrl");
-  if (imageUrl !== null && imageUrl.kind === JSONValueKind.STRING) {
-    user.imageUrl = imageUrl.toString();
-  }
 }
