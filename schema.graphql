@@ -37,12 +37,13 @@ type Community @entity(immutable: false) {
   name: String!
   description: String
   imageUrl: String
-  managerAddress: String!
   createdAt: BigInt!
+  tier: String!
+  tierRank: BigInt!
+  managerAddress: String!
+  manager: User!
   managerBadge: Badge!
   memberBadge: Badge
-  tier: String!
-  manager: User!
   memberCount: BigInt!
   members: [User!]! @derivedFrom(field: "communities")
 }

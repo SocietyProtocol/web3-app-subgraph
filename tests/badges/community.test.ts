@@ -80,6 +80,7 @@ function createAndSaveCommunity(
   community.managerBadge = managerBadgeId;
   community.memberCount = BigInt.zero();
   community.tier = "unaffiliated";
+  community.tierRank = BigInt.zero();
   community.save();
   return community;
 }

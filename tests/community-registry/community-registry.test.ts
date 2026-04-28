@@ -128,6 +128,7 @@ describe("CommunityRegistry Mappings", () => {
       );
       assert.fieldEquals("Community", "10", "memberCount", "0");
       assert.fieldEquals("Community", "10", "tier", "unaffiliated");
+      assert.fieldEquals("Community", "10", "tierRank", "0");
 
       log.success(
         "Community entity created with correct manager and member badge on CommunityCreated",
@@ -258,8 +259,83 @@ describe("CommunityRegistry Mappings", () => {
       );
 
       assert.fieldEquals("Community", "80", "tier", "gold");
+      assert.fieldEquals("Community", "80", "tierRank", "1000000");
 
       log.success("tier read from manager badge URI metadata", []);
+    });
+
+    test("Should set tierRank based on tier: bronze=100, silver=10000, gold=1000000, unaffiliated=0", () => {
+      const ipfsHashGold = "QmTierGold";
+      const ipfsHashSilver = "QmTierSilver";
+      const ipfsHashBronze = "QmTierBronze";
+      const ipfsHashUnaffiliated = "QmTierUnaffiliated";
+
+      mockIpfsFile(
+        ipfsHashGold,
+        "tests/community-registry/ipfs-mocks/valid-community-metadata.json",
+      );
+      mockIpfsFile(
+        ipfsHashSilver,
+        "tests/community-registry/ipfs-mocks/tier-silver-metadata.json",
+      );
+      mockIpfsFile(
+        ipfsHashBronze,
+        "tests/community-registry/ipfs-mocks/tier-bronze-metadata.json",
+      );
+
+      // gold
+      createAndSaveBadge("200", true, null, "ipfs://" + ipfsHashGold);
+      createAndSaveBadge("201", false);
+      handleCommunityCreated(
+        createCommunityCreatedEvent(
+          BigInt.fromI32(200),
+          Address.fromString(DEFAULT_CREATOR_ADDRESS),
+          BigInt.fromI32(201),
+        ),
+      );
+      assert.fieldEquals("Community", "200", "tier", "gold");
+      assert.fieldEquals("Community", "200", "tierRank", "1000000");
+
+      // silver
+      createAndSaveBadge("202", true, null, "ipfs://" + ipfsHashSilver);
+      createAndSaveBadge("203", false);
+      handleCommunityCreated(
+        createCommunityCreatedEvent(
+          BigInt.fromI32(202),
+          Address.fromString(DEFAULT_CREATOR_ADDRESS),
+          BigInt.fromI32(203),
+        ),
+      );
+      assert.fieldEquals("Community", "202", "tier", "silver");
+      assert.fieldEquals("Community", "202", "tierRank", "10000");
+
+      // bronze
+      createAndSaveBadge("204", true, null, "ipfs://" + ipfsHashBronze);
+      createAndSaveBadge("205", false);
+      handleCommunityCreated(
+        createCommunityCreatedEvent(
+          BigInt.fromI32(204),
+          Address.fromString(DEFAULT_CREATOR_ADDRESS),
+          BigInt.fromI32(205),
+        ),
+      );
+      assert.fieldEquals("Community", "204", "tier", "bronze");
+      assert.fieldEquals("Community", "204", "tierRank", "100");
+
+      // unaffiliated (no URI / no metadata)
+      createAndSaveBadge("206", true);
+      createAndSaveBadge("207", false);
+      handleCommunityCreated(
+        createCommunityCreatedEvent(
+          BigInt.fromI32(206),
+          Address.fromString(DEFAULT_CREATOR_ADDRESS),
+          BigInt.fromI32(207),
+        ),
+      );
+      assert.fieldEquals("Community", "206", "tier", "unaffiliated");
+      assert.fieldEquals("Community", "206", "tierRank", "0");
+
+      log.success("tierRank correctly mapped for all tiers", []);
     });
 
     test("Should set name and description from getCommunityDetails", () => {
