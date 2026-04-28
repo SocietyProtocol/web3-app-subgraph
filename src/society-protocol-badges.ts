@@ -1,15 +1,5 @@
-import {
-  Address,
-  BigInt,
-  Bytes,
-  ipfs,
-  json,
-  JSONValue,
-  JSONValueKind,
-  log,
-  TypedMap,
-} from "@graphprotocol/graph-ts";
-import { Badge, User } from "../generated/schema";
+import { Address, BigInt, Bytes, log } from "@graphprotocol/graph-ts";
+import { Badge, Community, User } from "../generated/schema";
 import {
   BadgeCreated,
   BadgeModified,
@@ -23,6 +13,12 @@ import {
   URI,
 } from "../generated/SocietyProtocolBadges/SocietyProtocolBadges";
 import { findOrCreateUser } from "./user";
+import {
+  applyIpfsMetadataToUser,
+  fetchIpfsMetadata,
+  getImageUrlFromIpfsUri,
+  getStringFromTypedMap,
+} from "./utils/metadata";
 
 const findOrCreateBadge = (badgeId: string, creator: string): Badge => {
   let badge = Badge.load(badgeId);
@@ -48,81 +44,6 @@ const findOrCreateBadge = (badgeId: string, creator: string): Badge => {
   }
 
   return badge;
-};
-
-const getIpfsJson = (
-  uri: string | null,
-): TypedMap<string, JSONValue> | null => {
-  if (uri !== null) {
-    let hash: string = "";
-
-    if (uri.startsWith("ipfs://")) {
-      // Handle ipfs://QmHash format
-      hash = uri.slice(7);
-    } else if (uri.includes("/ipfs/")) {
-      // Handle /ipfs/QmHash format
-      const parts = uri.split("/ipfs/");
-      if (parts.length > 1) {
-        hash = parts[parts.length - 1];
-      }
-    }
-
-    if (hash.length > 0) {
-      const metadata = ipfs.cat(hash);
-
-      if (metadata !== null) {
-        const parsed = json.fromBytes(metadata);
-        if (parsed.kind === JSONValueKind.OBJECT) {
-          return parsed.toObject();
-        }
-      } else {
-        log.info("No IPFS metadata found for hash: {}", [hash]);
-      }
-    }
-  }
-
-  return null;
-};
-
-const getImageUrlFromMetadata = (
-  metadata: TypedMap<string, JSONValue>,
-): string | null => {
-  const imageUrl = metadata.get("imageUrl");
-  if (imageUrl !== null && imageUrl.kind === JSONValueKind.STRING) {
-    return imageUrl.toString();
-  }
-  return null;
-};
-
-const getImageUrlFromIpfsUri = (uri: string | null): string | null => {
-  const metadata = getIpfsJson(uri);
-
-  if (metadata !== null) {
-    log.info("IPFS metadata found for uri: {}", [uri ? uri : "null"]);
-    return getImageUrlFromMetadata(metadata);
-  }
-
-  return null;
-};
-
-const applyIpfsMetadataToUser = (
-  user: User,
-  metadata: TypedMap<string, JSONValue>,
-): void => {
-  const name = metadata.get("name");
-  if (name !== null && name.kind === JSONValueKind.STRING) {
-    user.name = name.toString();
-  }
-
-  const bio = metadata.get("bio");
-  if (bio !== null && bio.kind === JSONValueKind.STRING) {
-    user.bio = bio.toString();
-  }
-
-  const imageUrl = metadata.get("imageUrl");
-  if (imageUrl !== null && imageUrl.kind === JSONValueKind.STRING) {
-    user.imageUrl = imageUrl.toString();
-  }
 };
 
 export function handleBadgeCreated(event: BadgeCreated): void {
@@ -151,7 +72,13 @@ export function handleBadgeCreated(event: BadgeCreated): void {
 
   if (!uriResult.reverted) {
     badge.uri = uriResult.value;
+    log.info("URI found for badge ID: {}: {}", [
+      event.params.id.toString(),
+      uriResult.value,
+    ]);
   } else {
+    log.info("URI not found for badge ID: {}", [event.params.id.toString()]);
+
     badge.uri = "";
   }
 
@@ -207,7 +134,7 @@ export function handleProfileCreated(event: ProfileCreated): void {
 
   user.profile = badge.id;
 
-  const metaData = getIpfsJson(badge.uri);
+  const metaData = fetchIpfsMetadata(badge.uri);
   if (metaData !== null) {
     applyIpfsMetadataToUser(user, metaData);
   }
@@ -228,8 +155,9 @@ export function handleURI(event: URI): void {
 
   badge.uri = event.params.value;
 
-  const metaData = getIpfsJson(event.params.value);
-  badge.imageUrl = metaData !== null ? getImageUrlFromMetadata(metaData) : null;
+  const metaData = fetchIpfsMetadata(event.params.value);
+  badge.imageUrl =
+    metaData !== null ? getStringFromTypedMap(metaData, "imageUrl") : null;
   badge.save();
 
   if (badge.isProfile && badge.profileUser != null) {
@@ -237,6 +165,14 @@ export function handleURI(event: URI): void {
     if (user != null && metaData !== null) {
       applyIpfsMetadataToUser(user, metaData);
       user.save();
+    }
+  }
+
+  if (badge.communityId != null) {
+    const community = Community.load(badge.communityId!);
+    if (community != null && metaData !== null) {
+      community.imageUrl = getStringFromTypedMap(metaData, "imageUrl");
+      community.save();
     }
   }
 }
@@ -261,6 +197,25 @@ export function mint(badgeId: BigInt, userId: Address, value: BigInt): void {
 
   badge.holdersCount = badge.holdersCount.plus(BigInt.fromI32(1));
   badge.save();
+
+  // If this badge is a community member badge, add user to the community.
+  // We identify member badges by comparing badge.id to community.managerBadge
+  // because both manager and member badges have isCommunity=true on-chain.
+  if (badge.communityId != null) {
+    const community = Community.load(badge.communityId!);
+    if (
+      community != null &&
+      badge.id != community.managerBadge &&
+      !user.communities.includes(community.id)
+    ) {
+      const updatedCommunities = user.communities;
+      updatedCommunities.push(community.id);
+      user.communities = updatedCommunities;
+      user.save();
+      community.memberCount = community.memberCount.plus(BigInt.fromI32(1));
+      community.save();
+    }
+  }
 }
 
 export function burn(badgeId: BigInt, userId: Address, value: BigInt): void {
@@ -281,6 +236,26 @@ export function burn(badgeId: BigInt, userId: Address, value: BigInt): void {
 
     badge.holdersCount = badge.holdersCount.minus(BigInt.fromI32(1));
     badge.save();
+
+    // If this badge is a community member badge, remove user from the community.
+    // We identify member badges by comparing badge.id to community.managerBadge
+    // because both manager and member badges have isCommunity=true on-chain.
+    if (badge.communityId != null) {
+      const community = Community.load(badge.communityId!);
+      if (community != null && badge.id != community.managerBadge) {
+        const communityIndex = user.communities.indexOf(community.id);
+        if (communityIndex >= 0) {
+          const updatedCommunities = user.communities;
+          updatedCommunities.splice(communityIndex, 1);
+          user.communities = updatedCommunities;
+          user.save();
+          community.memberCount = community.memberCount.minus(
+            BigInt.fromI32(1),
+          );
+          community.save();
+        }
+      }
+    }
   }
 }
 
@@ -317,6 +292,60 @@ export function transfer(
   updatedBadges.push(badge.id);
   toUser.badges = updatedBadges;
   toUser.save();
+
+  // Use community.managerBadge to distinguish manager vs member badge
+  // because both badge types have isCommunity=true on-chain.
+  if (badge.communityId != null) {
+    const community = Community.load(badge.communityId!);
+    if (community != null && badge.id == community.managerBadge) {
+      // Remove community from old manager's managedCommunities
+      const oldManagerIndex = fromUser.managedCommunities.indexOf(community.id);
+      if (oldManagerIndex >= 0) {
+        const updatedCommunities = fromUser.managedCommunities;
+        updatedCommunities.splice(oldManagerIndex, 1);
+        fromUser.managedCommunities = updatedCommunities;
+        fromUser.save();
+      }
+
+      // Add community to new manager's managedCommunities
+      if (!toUser.managedCommunities.includes(community.id)) {
+        const updatedCommunities = toUser.managedCommunities;
+        updatedCommunities.push(community.id);
+        toUser.managedCommunities = updatedCommunities;
+        toUser.save();
+      }
+
+      community.managerAddress = toUserId.toHexString();
+      community.manager = toUserId.toHexString();
+      community.save();
+    }
+  }
+
+  // If this badge is a community member badge, transfer membership
+  if (badge.communityId != null) {
+    const community = Community.load(badge.communityId!);
+    if (community != null && badge.id != community.managerBadge) {
+      // Remove membership from old holder
+      const fromIndex = fromUser.communities.indexOf(community.id);
+      if (fromIndex >= 0) {
+        const fromCommunities = fromUser.communities;
+        fromCommunities.splice(fromIndex, 1);
+        fromUser.communities = fromCommunities;
+        fromUser.save();
+        community.memberCount = community.memberCount.minus(BigInt.fromI32(1));
+        community.save();
+      }
+      // Add membership to new holder
+      if (!toUser.communities.includes(community.id)) {
+        const toCommunities = toUser.communities;
+        toCommunities.push(community.id);
+        toUser.communities = toCommunities;
+        toUser.save();
+        community.memberCount = community.memberCount.plus(BigInt.fromI32(1));
+        community.save();
+      }
+    }
+  }
 }
 
 export function handleTransferSingle(event: TransferSingle): void {

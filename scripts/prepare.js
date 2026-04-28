@@ -60,6 +60,27 @@ template = template.replace(
   networkConfig.vipManager.startBlock,
 );
 
+// Handle optional CommunityRegistry block
+if (networkConfig.CommunityRegistry) {
+  // Remove the conditional markers and replace placeholders
+  template = template.replace(/^# \{\{#CommunityRegistry\}\}\n/m, "");
+  template = template.replace(/^# \{\{\/CommunityRegistry\}\}\n?/m, "");
+  template = template.replace(
+    "{ { CommunityRegistry.address } }",
+    networkConfig.CommunityRegistry.address,
+  );
+  template = template.replace(
+    "{ { CommunityRegistry.startBlock } }",
+    networkConfig.CommunityRegistry.startBlock,
+  );
+} else {
+  // Remove the entire CommunityRegistry block including its markers
+  template = template.replace(
+    /^# \{\{#CommunityRegistry\}\}[\s\S]*?^# \{\{\/CommunityRegistry\}\}\n?/m,
+    "",
+  );
+}
+
 // Write output
 const outputPath = path.join(__dirname, "..", "subgraph.yaml");
 fs.writeFileSync(outputPath, template);
