@@ -179,8 +179,8 @@ export function handleURI(event: URI): void {
     }
   }
 
-  if (badge.communityId != null) {
-    const community = Community.load(badge.communityId!);
+  if (badge.community != null) {
+    const community = Community.load(badge.community!);
     if (community != null && metaData !== null) {
       community.imageUrl = getStringFromTypedMap(metaData, "imageUrl");
       community.save();
@@ -195,6 +195,7 @@ export function mint(badgeId: BigInt, userId: Address, value: BigInt): void {
   if (badge == null) {
     return;
   }
+
   const alreadyHasBadge = user.badges.indexOf(badge.id) >= 0;
 
   if (alreadyHasBadge) {
@@ -212,8 +213,9 @@ export function mint(badgeId: BigInt, userId: Address, value: BigInt): void {
   // If this badge is a community member badge, add user to the community.
   // We identify member badges by comparing badge.id to community.managerBadge
   // because both manager and member badges have isCommunity=true on-chain.
-  if (badge.communityId != null) {
-    const community = Community.load(badge.communityId!);
+  if (badge.community != null) {
+    const community = Community.load(badge.community!);
+
     if (
       community != null &&
       badge.id != community.managerBadge &&
@@ -251,8 +253,8 @@ export function burn(badgeId: BigInt, userId: Address, value: BigInt): void {
     // If this badge is a community member badge, remove user from the community.
     // We identify member badges by comparing badge.id to community.managerBadge
     // because both manager and member badges have isCommunity=true on-chain.
-    if (badge.communityId != null) {
-      const community = Community.load(badge.communityId!);
+    if (badge.community != null) {
+      const community = Community.load(badge.community!);
       if (community != null && badge.id != community.managerBadge) {
         const communityIndex = user.communities.indexOf(community.id);
         if (communityIndex >= 0) {
@@ -306,8 +308,8 @@ export function transfer(
 
   // Use community.managerBadge to distinguish manager vs member badge
   // because both badge types have isCommunity=true on-chain.
-  if (badge.communityId != null) {
-    const community = Community.load(badge.communityId!);
+  if (badge.community != null) {
+    const community = Community.load(badge.community!);
     if (community != null && badge.id == community.managerBadge) {
       // Remove community from old manager's managedCommunities
       const oldManagerIndex = fromUser.managedCommunities.indexOf(community.id);
@@ -333,8 +335,8 @@ export function transfer(
   }
 
   // If this badge is a community member badge, transfer membership
-  if (badge.communityId != null) {
-    const community = Community.load(badge.communityId!);
+  if (badge.community != null) {
+    const community = Community.load(badge.community!);
     if (community != null && badge.id != community.managerBadge) {
       // Remove membership from old holder
       const fromIndex = fromUser.communities.indexOf(community.id);
@@ -360,8 +362,10 @@ export function transfer(
 }
 
 export function handleTransferSingle(event: TransferSingle): void {
-  log.info("Handling TransferSingle for badge ID: {}", [
+  log.info("Handling TransferSingle for badge ID: {}, from: {}, to: {}", [
     event.params.id.toString(),
+    event.params.from.toHexString(),
+    event.params.to.toHexString(),
   ]);
   // Minting
   if (

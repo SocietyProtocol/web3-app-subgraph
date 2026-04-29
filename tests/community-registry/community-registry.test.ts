@@ -62,7 +62,7 @@ describe("CommunityRegistry Mappings", () => {
         createCommunityBadgeCreatedEvent(BigInt.fromI32(1), BigInt.fromI32(10)),
       );
 
-      assert.fieldEquals("Badge", "10", "communityId", "1");
+      assert.fieldEquals("Badge", "10", "community", "1");
 
       log.success("Badge linked to community on CommunityBadgeCreated", []);
     });
@@ -78,8 +78,8 @@ describe("CommunityRegistry Mappings", () => {
         createCommunityBadgeCreatedEvent(BigInt.fromI32(1), BigInt.fromI32(12)),
       );
 
-      assert.fieldEquals("Badge", "10", "communityId", "1");
-      assert.fieldEquals("Badge", "12", "communityId", "1");
+      assert.fieldEquals("Badge", "10", "community", "1");
+      assert.fieldEquals("Badge", "12", "community", "1");
 
       log.success(
         "Multiple badges linked to community on CommunityBadgeCreated",
@@ -172,7 +172,7 @@ describe("CommunityRegistry Mappings", () => {
         ),
       );
 
-      assert.fieldEquals("Badge", "31", "communityId", "30");
+      assert.fieldEquals("Badge", "31", "community", "30");
 
       log.success("Member badge linked to community on CommunityCreated", []);
     });
@@ -191,8 +191,8 @@ describe("CommunityRegistry Mappings", () => {
 
       assert.fieldEquals("Community", "99", "managerBadge", "99");
       assert.fieldEquals("Community", "99", "memberBadge", "30");
-      assert.fieldEquals("Badge", "99", "communityId", "99");
-      assert.fieldEquals("Badge", "30", "communityId", "99");
+      assert.fieldEquals("Badge", "99", "community", "99");
+      assert.fieldEquals("Badge", "30", "community", "99");
 
       log.success("communityId used as managerBadgeId (contract design)", []);
     });
@@ -412,8 +412,8 @@ describe("CommunityRegistry Mappings", () => {
         "managerAddress",
         creatorAddress.toHexString(),
       );
-      assert.fieldEquals("Badge", "100", "communityId", "100");
-      assert.fieldEquals("Badge", "101", "communityId", "100");
+      assert.fieldEquals("Badge", "100", "community", "100");
+      assert.fieldEquals("Badge", "101", "community", "100");
 
       log.success("Full CommunityRegistry flow completed correctly", []);
     });

@@ -28,11 +28,11 @@
     },
     "vipManager": {
       "address": "0xfBe16eD3999239c3Ee2e1d779b9397EB76f238E1",
-      "startBlock": 10204023
+      "startBlock": 10748728
     },
     "CommunityRegistry": {
       "address": "0x84ffd2805af9d0946e02Fe19Cd1eE58228669B0e",
-      "startBlock": 10748728
+      "startBlock": 10704555
     }
   }
 }

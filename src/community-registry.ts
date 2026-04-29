@@ -26,7 +26,7 @@ export function handleCommunityBadgeCreated(
   // Link this badge back to the community
   const badge = Badge.load(badgeId);
   if (badge != null) {
-    badge.communityId = communityId;
+    badge.community = communityId;
     badge.save();
   }
 }
@@ -82,8 +82,22 @@ export function handleCommunityCreated(event: CommunityCreated): void {
     const updatedCommunities = manager.managedCommunities;
     updatedCommunities.push(communityId);
     manager.managedCommunities = updatedCommunities;
-    manager.save();
   }
+
+  if (!manager.badges.includes(memberBadgeId)) {
+    const updatedBadges = manager.badges;
+    updatedBadges.push(memberBadgeId);
+    manager.badges = updatedBadges;
+  }
+
+  if (!manager.communities.includes(communityId)) {
+    const updatedCommunities = manager.communities;
+    updatedCommunities.push(communityId);
+    manager.communities = updatedCommunities;
+    community.memberCount = community.memberCount.plus(BigInt.fromI32(1)); // count the creator as the first member
+  }
+
+  manager.save();
 
   // Ensure the manager badge exists before saving the community, since
   // Community.managerBadge is non-nullable in the schema.
@@ -102,7 +116,7 @@ export function handleCommunityCreated(event: CommunityCreated): void {
     managerBadge.minters = [];
     managerBadge.burners = [];
     managerBadge.transferers = [];
-    managerBadge.communityId = communityId;
+    managerBadge.community = communityId;
     managerBadge.save();
   }
 
@@ -112,19 +126,20 @@ export function handleCommunityCreated(event: CommunityCreated): void {
   }
 
   // Ensure manager badge is linked (may already be set by handleCommunityBadgeCreated)
-  if (managerBadge.communityId == null) {
-    managerBadge.communityId = communityId;
+  if (managerBadge.community == null) {
+    managerBadge.community = communityId;
     managerBadge.save();
   }
 
-  community.save();
-
   // Link the member badge to this community
   const memberBadge = Badge.load(memberBadgeId);
+
   if (memberBadge != null) {
-    memberBadge.communityId = communityId;
+    memberBadge.community = communityId;
     memberBadge.save();
   }
+
+  community.save();
 }
 
 /**
