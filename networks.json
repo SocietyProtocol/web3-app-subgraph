@@ -27,12 +27,12 @@
       "startBlock": 9860928
     },
     "vipManager": {
-      "address": "0x51B7481dDe7Fd0b793dbF0CAabcCd6B78D9790DF",
+      "address": "0xfBe16eD3999239c3Ee2e1d779b9397EB76f238E1",
       "startBlock": 10204023
     },
     "CommunityRegistry": {
       "address": "0x84ffd2805af9d0946e02Fe19Cd1eE58228669B0e",
-      "startBlock": 10704555
+      "startBlock": 10748728
     }
   }
 }

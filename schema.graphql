@@ -38,8 +38,9 @@ type Community @entity(immutable: false) {
   description: String
   imageUrl: String
   createdAt: BigInt!
-  tier: String!
-  tierRank: BigInt!
+  tierId: BigInt!
+  tierName: String!
+  tierExpiresAt: BigInt!
   managerAddress: String!
   manager: User!
   managerBadge: Badge!

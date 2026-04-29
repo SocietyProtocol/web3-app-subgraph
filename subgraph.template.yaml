@@ -105,6 +105,7 @@ dataSources:
       language: wasm/assemblyscript
       entities:
         - LockTransaction
+        - Community
       abis:
         - name: SocietyVipManager
           file: ./abis/SocietyVipManager.json
@@ -113,6 +114,10 @@ dataSources:
           handler: handleTokensLocked
         - event: TokensUnlocked(indexed address,uint256)
           handler: handleTokensUnlocked
+        - event: CommunityTierGranted(indexed uint256,uint256,uint256)
+          handler: handleCommunityTierGranted
+        - event: CommunityTierRevoked(indexed uint256)
+          handler: handleCommunityTierRevoked
       file: ./src/vip-manager.ts
   # {{#CommunityRegistry}}
   - kind: ethereum

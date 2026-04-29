@@ -79,8 +79,9 @@ function createAndSaveCommunity(
   community.createdAt = BigInt.fromI32(1683094249);
   community.managerBadge = managerBadgeId;
   community.memberCount = BigInt.zero();
-  community.tier = "unaffiliated";
-  community.tierRank = BigInt.zero();
+  community.tierId = BigInt.zero();
+  community.tierName = "unaffiliated";
+  community.tierExpiresAt = BigInt.zero();
   community.save();
   return community;
 }
