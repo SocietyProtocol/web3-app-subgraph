@@ -1,4 +1,4 @@
-import { BigInt, log } from "@graphprotocol/graph-ts";
+import { BigInt, Bytes, log } from "@graphprotocol/graph-ts";
 import { Badge, Community } from "../generated/schema";
 import {
   CommunityBadgeCreated,
@@ -105,8 +105,14 @@ export function handleCommunityCreated(event: CommunityCreated): void {
     managerBadge.isOfficial = false;
     managerBadge.isCommunity = true;
     managerBadge.isProfile = false;
+    managerBadge.hookAddress = new Bytes(0);
     managerBadge.creatorAddress = creatorAddress;
     managerBadge.createdAt = event.block.timestamp;
+    managerBadge.createdBy = manager.id;
+    managerBadge.holdersCount = BigInt.zero();
+    managerBadge.minters = [];
+    managerBadge.burners = [];
+    managerBadge.transferers = [];
     managerBadge.communityId = communityId;
     managerBadge.save();
   }
