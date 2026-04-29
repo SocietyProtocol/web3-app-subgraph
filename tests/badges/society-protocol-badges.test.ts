@@ -67,6 +67,8 @@ function createAndSaveUser(address: Address, badges: string[]): User {
   const user = new User(address.toHexString());
   user.badges = badges;
   user.managedBadges = [];
+  user.managedCommunities = [];
+  user.communities = [];
   user.save();
   return user;
 }
@@ -294,7 +296,12 @@ describe("Society Protocol Badges Mappings", () => {
       handleProfileCreated(profileCreatedEvent);
 
       assert.fieldEquals("User", userAddress.toHexString(), "profile", "1");
-      assert.fieldEquals("Badge", "1", "profileUser", userAddress.toHexString());
+      assert.fieldEquals(
+        "Badge",
+        "1",
+        "profileUser",
+        userAddress.toHexString(),
+      );
 
       log.success("Profile badge set successfully", []);
     });
@@ -340,7 +347,12 @@ describe("Society Protocol Badges Mappings", () => {
       handleProfileCreated(profileCreatedEvent);
 
       assert.fieldEquals("User", userAddress.toHexString(), "profile", "10");
-      assert.fieldEquals("Badge", "10", "profileUser", userAddress.toHexString());
+      assert.fieldEquals(
+        "Badge",
+        "10",
+        "profileUser",
+        userAddress.toHexString(),
+      );
       assert.fieldEquals("User", userAddress.toHexString(), "name", "John Doe");
       assert.fieldEquals(
         "User",
@@ -384,7 +396,12 @@ describe("Society Protocol Badges Mappings", () => {
       handleProfileCreated(profileCreatedEvent);
 
       assert.fieldEquals("User", userAddress.toHexString(), "profile", "11");
-      assert.fieldEquals("Badge", "11", "profileUser", userAddress.toHexString());
+      assert.fieldEquals(
+        "Badge",
+        "11",
+        "profileUser",
+        userAddress.toHexString(),
+      );
       // Name should not be set since it wasn't a string
       const user11 = User.load(userAddress.toHexString());
       assert.assertNotNull(user11);
@@ -429,7 +446,12 @@ describe("Society Protocol Badges Mappings", () => {
       handleProfileCreated(profileCreatedEvent);
 
       assert.fieldEquals("User", userAddress.toHexString(), "profile", "12");
-      assert.fieldEquals("Badge", "12", "profileUser", userAddress.toHexString());
+      assert.fieldEquals(
+        "Badge",
+        "12",
+        "profileUser",
+        userAddress.toHexString(),
+      );
       // Bio should not be set since it wasn't a string
       const user12 = User.load(userAddress.toHexString());
       assert.assertNotNull(user12);
@@ -469,7 +491,12 @@ describe("Society Protocol Badges Mappings", () => {
       handleProfileCreated(profileCreatedEvent);
 
       assert.fieldEquals("User", userAddress.toHexString(), "profile", "13");
-      assert.fieldEquals("Badge", "13", "profileUser", userAddress.toHexString());
+      assert.fieldEquals(
+        "Badge",
+        "13",
+        "profileUser",
+        userAddress.toHexString(),
+      );
       // ImageUrl should not be set since it wasn't a string
       const user13 = User.load(userAddress.toHexString());
       assert.assertNotNull(user13);
