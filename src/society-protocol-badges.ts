@@ -81,8 +81,10 @@ export function handleBadgeCreated(event: BadgeCreated): void {
 
   if (metadata !== null) {
     badge.imageUrl = getStringFromTypedMap(metadata, "imageUrl");
+    badge.description = getStringFromTypedMap(metadata, "description");
   } else {
     badge.imageUrl = null;
+    badge.description = null;
   }
 
   badge.save();
@@ -105,8 +107,10 @@ export function handleBadgeModified(event: BadgeModified): void {
 
   if (metadata !== null) {
     badge.imageUrl = getStringFromTypedMap(metadata, "imageUrl");
+    badge.description = getStringFromTypedMap(metadata, "description");
   } else {
     badge.imageUrl = null;
+    badge.description = null;
   }
 
   badge.save();
@@ -167,6 +171,8 @@ export function handleURI(event: URI): void {
   const metaData = fetchIpfsMetadata(event.params.value);
   badge.imageUrl =
     metaData !== null ? getStringFromTypedMap(metaData, "imageUrl") : null;
+  badge.description =
+    metaData !== null ? getStringFromTypedMap(metaData, "description") : null;
   badge.save();
 
   if (badge.isProfile && badge.profileUser != null) {
