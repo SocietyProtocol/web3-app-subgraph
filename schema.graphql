@@ -13,6 +13,7 @@ type User @entity(immutable: false) {
 type Badge @entity(immutable: false) {
   id: ID!
   name: String!
+  description: String
   isOfficial: Boolean!
   isCommunity: Boolean!
   isProfile: Boolean!

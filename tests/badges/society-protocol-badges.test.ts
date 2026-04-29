@@ -157,6 +157,12 @@ describe("Society Protocol Badges Mappings", () => {
         "imageUrl",
         "https://example.com/image.png",
       );
+      assert.fieldEquals(
+        "Badge",
+        "3",
+        "description",
+        "A badge with valid metadata",
+      );
 
       log.success("Badge with valid IPFS metadata created successfully", []);
     });
@@ -1035,6 +1041,18 @@ describe("Society Protocol Badges Mappings", () => {
 
       assert.fieldEquals("Badge", "2", "name", "Badge Two Updated");
       assert.fieldEquals("Badge", "2", "uri", "ipfs://QmValidMetadata");
+      assert.fieldEquals(
+        "Badge",
+        "2",
+        "imageUrl",
+        "https://example.com/image.png",
+      );
+      assert.fieldEquals(
+        "Badge",
+        "2",
+        "description",
+        "A badge with valid metadata",
+      );
 
       log.success("Badge uri and imageUrl updated from IPFS", []);
     });
