@@ -100,6 +100,60 @@ describe("CommunityRegistry Mappings", () => {
         [],
       );
     });
+
+    test("Should increment Community.badgeCount when a new badge is linked", () => {
+      createAndSaveBadge("5", true);
+      createAndSaveBadge("6", false);
+
+      // Create a community first via handleCommunityCreated so badgeCount is initialized
+      handleCommunityCreated(
+        createCommunityCreatedEvent(
+          BigInt.fromI32(5),
+          Address.fromString(DEFAULT_CREATOR_ADDRESS),
+          BigInt.fromI32(6),
+        ),
+      );
+
+      assert.fieldEquals("Community", "5", "badgeCount", "2");
+
+      // Link an additional badge via CommunityBadgeCreated
+      createAndSaveBadge("7", true);
+      handleCommunityBadgeCreated(
+        createCommunityBadgeCreatedEvent(BigInt.fromI32(5), BigInt.fromI32(7)),
+      );
+
+      assert.fieldEquals("Community", "5", "badgeCount", "3");
+
+      log.success(
+        "Community.badgeCount incremented on CommunityBadgeCreated",
+        [],
+      );
+    });
+
+    test("Should not double-count badgeCount when badge is already linked to the community", () => {
+      createAndSaveBadge("8", true);
+      createAndSaveBadge("9", false);
+
+      handleCommunityCreated(
+        createCommunityCreatedEvent(
+          BigInt.fromI32(8),
+          Address.fromString(DEFAULT_CREATOR_ADDRESS),
+          BigInt.fromI32(9),
+        ),
+      );
+
+      // badge 9 is already linked to community 8 — re-firing CommunityBadgeCreated should not increment
+      handleCommunityBadgeCreated(
+        createCommunityBadgeCreatedEvent(BigInt.fromI32(8), BigInt.fromI32(9)),
+      );
+
+      assert.fieldEquals("Community", "8", "badgeCount", "2");
+
+      log.success(
+        "badgeCount not double-counted when badge is already linked",
+        [],
+      );
+    });
   });
 
   describe("handleCommunityCreated", () => {
@@ -125,10 +179,11 @@ describe("CommunityRegistry Mappings", () => {
         "managerAddress",
         creatorAddress.toHexString(),
       );
-      assert.fieldEquals("Community", "10", "memberCount", "0");
+      assert.fieldEquals("Community", "10", "memberCount", "1");
       assert.fieldEquals("Community", "10", "tierId", "0");
       assert.fieldEquals("Community", "10", "tierName", "unaffiliated");
       assert.fieldEquals("Community", "10", "tierExpiresAt", "0");
+      assert.fieldEquals("Community", "10", "badgeCount", "2");
 
       log.success(
         "Community entity created with correct manager and member badge on CommunityCreated",
@@ -211,6 +266,7 @@ describe("CommunityRegistry Mappings", () => {
 
       assert.fieldEquals("Community", "40", "managerBadge", "40");
       assert.fieldEquals("Community", "40", "memberBadge", "41");
+      assert.fieldEquals("Community", "40", "badgeCount", "1");
 
       log.success(
         "Community created even when member Badge entity is absent",
@@ -414,6 +470,7 @@ describe("CommunityRegistry Mappings", () => {
       );
       assert.fieldEquals("Badge", "100", "community", "100");
       assert.fieldEquals("Badge", "101", "community", "100");
+      assert.fieldEquals("Community", "100", "badgeCount", "2");
 
       log.success("Full CommunityRegistry flow completed correctly", []);
     });

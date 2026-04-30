@@ -47,6 +47,7 @@ type Community @entity(immutable: false) {
   managerBadge: Badge!
   memberBadge: Badge
   memberCount: BigInt!
+  badgeCount: BigInt!
   members: [User!]! @derivedFrom(field: "communities")
   badges: [Badge!]! @derivedFrom(field: "community")
 }

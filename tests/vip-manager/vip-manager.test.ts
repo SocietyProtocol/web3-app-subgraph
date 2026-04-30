@@ -47,6 +47,7 @@ function createAndSaveCommunity(id: string): void {
   community.manager = "0x0000000000000000000000000000000000000001";
   community.managerBadge = id;
   community.memberCount = BigInt.zero();
+  community.badgeCount = BigInt.zero();
   community.save();
 }
 
