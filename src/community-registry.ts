@@ -26,6 +26,13 @@ export function handleCommunityBadgeCreated(
   // Link this badge back to the community
   const badge = Badge.load(badgeId);
   if (badge != null) {
+    if (badge.community == null) {
+      const community = Community.load(communityId);
+      if (community != null) {
+        community.badgeCount = community.badgeCount.plus(BigInt.fromI32(1));
+        community.save();
+      }
+    }
     badge.community = communityId;
     badge.save();
   }
@@ -58,6 +65,7 @@ export function handleCommunityCreated(event: CommunityCreated): void {
     community.tierName = "unaffiliated";
     community.tierExpiresAt = BigInt.zero();
     community.memberCount = BigInt.zero();
+    community.badgeCount = BigInt.zero();
     community.createdAt = event.block.timestamp;
   }
 
@@ -118,6 +126,7 @@ export function handleCommunityCreated(event: CommunityCreated): void {
     managerBadge.transferers = [];
     managerBadge.community = communityId;
     managerBadge.save();
+    community.badgeCount = community.badgeCount.plus(BigInt.fromI32(1));
   }
 
   const badgeImageUrl = managerBadge.imageUrl;
@@ -129,12 +138,16 @@ export function handleCommunityCreated(event: CommunityCreated): void {
   if (managerBadge.community == null) {
     managerBadge.community = communityId;
     managerBadge.save();
+    community.badgeCount = community.badgeCount.plus(BigInt.fromI32(1));
   }
 
   // Link the member badge to this community
   const memberBadge = Badge.load(memberBadgeId);
 
   if (memberBadge != null) {
+    if (memberBadge.community == null) {
+      community.badgeCount = community.badgeCount.plus(BigInt.fromI32(1));
+    }
     memberBadge.community = communityId;
     memberBadge.save();
   }
