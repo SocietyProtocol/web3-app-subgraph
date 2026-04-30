@@ -6,7 +6,12 @@ import {
   TokensLocked,
   TokensUnlocked,
 } from "../generated/SocietyVipManager/SocietyVipManager";
-import { Community, LockTransaction } from "../generated/schema";
+import {
+  Community,
+  CommunityTierGrantedActivity,
+  CommunityTierRevokedActivity,
+  LockTransaction,
+} from "../generated/schema";
 import { findOrCreateUser } from "./user";
 
 function tierIdToName(tierId: BigInt, contractAddress: Address): string {
@@ -31,10 +36,23 @@ export function handleCommunityTierGranted(event: CommunityTierGranted): void {
   const community = Community.load(communityId);
   if (community == null) return;
 
+  const tierName = tierIdToName(event.params.tierId, event.address);
   community.tierId = event.params.tierId;
-  community.tierName = tierIdToName(event.params.tierId, event.address);
+  community.tierName = tierName;
   community.tierExpiresAt = event.params.expiry;
   community.save();
+
+  const activityId =
+    event.transaction.hash.toHex() + "-" + event.logIndex.toString();
+  const activity = new CommunityTierGrantedActivity(activityId);
+  activity.community = communityId;
+  activity.timestamp = event.block.timestamp;
+  activity.blockNumber = event.block.number;
+  activity.txHash = event.transaction.hash;
+  activity.tierId = event.params.tierId;
+  activity.tierName = tierName;
+  activity.tierExpiresAt = event.params.expiry;
+  activity.save();
 }
 
 export function handleCommunityTierRevoked(event: CommunityTierRevoked): void {
@@ -42,10 +60,24 @@ export function handleCommunityTierRevoked(event: CommunityTierRevoked): void {
   const community = Community.load(communityId);
   if (community == null) return;
 
+  const previousTierId = community.tierId;
+  const previousTierName = community.tierName;
+
   community.tierId = BigInt.zero();
   community.tierName = "unaffiliated";
   community.tierExpiresAt = BigInt.zero();
   community.save();
+
+  const activityId =
+    event.transaction.hash.toHex() + "-" + event.logIndex.toString();
+  const activity = new CommunityTierRevokedActivity(activityId);
+  activity.community = communityId;
+  activity.timestamp = event.block.timestamp;
+  activity.blockNumber = event.block.number;
+  activity.txHash = event.transaction.hash;
+  activity.previousTierId = previousTierId;
+  activity.previousTierName = previousTierName;
+  activity.save();
 }
 
 export function handleTokensLocked(event: TokensLocked): void {

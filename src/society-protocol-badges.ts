@@ -1,4 +1,4 @@
-import { Address, BigInt, Bytes, log } from "@graphprotocol/graph-ts";
+import { BigInt, Bytes, log } from "@graphprotocol/graph-ts";
 import { Badge, Community, User } from "../generated/schema";
 import {
   BadgeCreated,
@@ -14,32 +14,8 @@ import {
 } from "../generated/SocietyProtocolBadges/SocietyProtocolBadges";
 import { findOrCreateUser } from "./user";
 import { fetchIpfsMetadata, getStringFromTypedMap } from "./utils/metadata";
-
-const findOrCreateBadge = (badgeId: string, creator: string): Badge => {
-  let badge = Badge.load(badgeId);
-
-  if (badge == null) {
-    const createdByUser = findOrCreateUser(creator);
-    badge = new Badge(badgeId);
-    badge.creatorAddress = creator;
-    badge.createdBy = createdByUser.id;
-    badge.name = "";
-    badge.isOfficial = false;
-    badge.isCommunity = false;
-    badge.isProfile = false;
-    badge.hookAddress = new Bytes(0);
-    badge.createdAt = BigInt.zero();
-    badge.uri = "";
-    badge.holdersCount = BigInt.zero();
-    badge.minters = [];
-    badge.burners = [];
-    badge.transferers = [];
-
-    badge.save();
-  }
-
-  return badge;
-};
+import { findOrCreateBadge, bigIntArrayToStringArray } from "./utils/badge";
+import { mint, burn, transfer } from "./utils/community-membership";
 
 export function handleBadgeCreated(event: BadgeCreated): void {
   log.info("Handling BadgeCreated for badge ID: {}", [
@@ -194,179 +170,6 @@ export function handleURI(event: URI): void {
   }
 }
 
-export function mint(badgeId: BigInt, userId: Address, value: BigInt): void {
-  const badge = Badge.load(badgeId.toString());
-  const user = findOrCreateUser(userId.toHexString());
-
-  if (badge == null) {
-    return;
-  }
-
-  const alreadyHasBadge = user.badges.indexOf(badge.id) >= 0;
-
-  if (alreadyHasBadge) {
-    return;
-  }
-
-  const updatedBadges = user.badges;
-  updatedBadges.push(badge.id);
-  user.badges = updatedBadges;
-  user.save();
-
-  badge.holdersCount = badge.holdersCount.plus(BigInt.fromI32(1));
-  badge.save();
-
-  // If this badge is a community member badge, add user to the community.
-  // We identify member badges by comparing badge.id to community.managerBadge
-  // because both manager and member badges have isCommunity=true on-chain.
-  if (badge.community != null) {
-    const community = Community.load(badge.community!);
-
-    if (
-      community != null &&
-      badge.id != community.managerBadge &&
-      !user.communities.includes(community.id)
-    ) {
-      const updatedCommunities = user.communities;
-      updatedCommunities.push(community.id);
-      user.communities = updatedCommunities;
-      user.save();
-      community.memberCount = community.memberCount.plus(BigInt.fromI32(1));
-      community.save();
-    }
-  }
-}
-
-export function burn(badgeId: BigInt, userId: Address, value: BigInt): void {
-  const badge = Badge.load(badgeId.toString());
-  const user = findOrCreateUser(userId.toHexString());
-
-  if (badge == null) {
-    return;
-  }
-
-  const badgeIndex = user.badges.indexOf(badge.id);
-
-  if (badgeIndex >= 0) {
-    const updatedBadges = user.badges;
-    updatedBadges.splice(badgeIndex, 1);
-    user.badges = updatedBadges;
-    user.save();
-
-    badge.holdersCount = badge.holdersCount.minus(BigInt.fromI32(1));
-    badge.save();
-
-    // If this badge is a community member badge, remove user from the community.
-    // We identify member badges by comparing badge.id to community.managerBadge
-    // because both manager and member badges have isCommunity=true on-chain.
-    if (badge.community != null) {
-      const community = Community.load(badge.community!);
-      if (community != null && badge.id != community.managerBadge) {
-        const communityIndex = user.communities.indexOf(community.id);
-        if (communityIndex >= 0) {
-          const updatedCommunities = user.communities;
-          updatedCommunities.splice(communityIndex, 1);
-          user.communities = updatedCommunities;
-          user.save();
-          community.memberCount = community.memberCount.minus(
-            BigInt.fromI32(1),
-          );
-          community.save();
-        }
-      }
-    }
-  }
-}
-
-export function transfer(
-  badgeId: BigInt,
-  fromUserId: Address,
-  toUserId: Address,
-  value: BigInt,
-): void {
-  const badge = Badge.load(badgeId.toString());
-  const fromUser = findOrCreateUser(fromUserId.toHexString());
-  const toUser = findOrCreateUser(toUserId.toHexString());
-
-  if (badge == null) {
-    return;
-  }
-
-  const badgeIndex = fromUser.badges.indexOf(badge.id);
-
-  if (badgeIndex >= 0) {
-    const updatedBadges = fromUser.badges;
-    updatedBadges.splice(badgeIndex, 1);
-    fromUser.badges = updatedBadges;
-    fromUser.save();
-  }
-
-  const alreadyHasBadge = toUser.badges.indexOf(badge.id) >= 0;
-
-  if (alreadyHasBadge) {
-    return;
-  }
-
-  const updatedBadges = toUser.badges;
-  updatedBadges.push(badge.id);
-  toUser.badges = updatedBadges;
-  toUser.save();
-
-  // Use community.managerBadge to distinguish manager vs member badge
-  // because both badge types have isCommunity=true on-chain.
-  if (badge.community != null) {
-    const community = Community.load(badge.community!);
-    if (community != null && badge.id == community.managerBadge) {
-      // Remove community from old manager's managedCommunities
-      const oldManagerIndex = fromUser.managedCommunities.indexOf(community.id);
-      if (oldManagerIndex >= 0) {
-        const updatedCommunities = fromUser.managedCommunities;
-        updatedCommunities.splice(oldManagerIndex, 1);
-        fromUser.managedCommunities = updatedCommunities;
-        fromUser.save();
-      }
-
-      // Add community to new manager's managedCommunities
-      if (!toUser.managedCommunities.includes(community.id)) {
-        const updatedCommunities = toUser.managedCommunities;
-        updatedCommunities.push(community.id);
-        toUser.managedCommunities = updatedCommunities;
-        toUser.save();
-      }
-
-      community.managerAddress = toUserId.toHexString();
-      community.manager = toUserId.toHexString();
-      community.save();
-    }
-  }
-
-  // If this badge is a community member badge, transfer membership
-  if (badge.community != null) {
-    const community = Community.load(badge.community!);
-    if (community != null && badge.id != community.managerBadge) {
-      // Remove membership from old holder
-      const fromIndex = fromUser.communities.indexOf(community.id);
-      if (fromIndex >= 0) {
-        const fromCommunities = fromUser.communities;
-        fromCommunities.splice(fromIndex, 1);
-        fromUser.communities = fromCommunities;
-        fromUser.save();
-        community.memberCount = community.memberCount.minus(BigInt.fromI32(1));
-        community.save();
-      }
-      // Add membership to new holder
-      if (!toUser.communities.includes(community.id)) {
-        const toCommunities = toUser.communities;
-        toCommunities.push(community.id);
-        toUser.communities = toCommunities;
-        toUser.save();
-        community.memberCount = community.memberCount.plus(BigInt.fromI32(1));
-        community.save();
-      }
-    }
-  }
-}
-
 export function handleTransferSingle(event: TransferSingle): void {
   log.info("Handling TransferSingle for badge ID: {}, from: {}, to: {}", [
     event.params.id.toString(),
@@ -378,7 +181,15 @@ export function handleTransferSingle(event: TransferSingle): void {
     event.params.from.toHexString() ==
     "0x0000000000000000000000000000000000000000"
   ) {
-    mint(event.params.id, event.params.to, event.params.value);
+    mint(
+      event.params.id,
+      event.params.to,
+      event.params.value,
+      event.transaction.hash,
+      event.block.timestamp,
+      event.block.number,
+      event.logIndex,
+    );
   }
 
   // Burning
@@ -386,7 +197,15 @@ export function handleTransferSingle(event: TransferSingle): void {
     event.params.to.toHexString() ==
     "0x0000000000000000000000000000000000000000"
   ) {
-    burn(event.params.id, event.params.from, event.params.value);
+    burn(
+      event.params.id,
+      event.params.from,
+      event.params.value,
+      event.transaction.hash,
+      event.block.timestamp,
+      event.block.number,
+      event.logIndex,
+    );
   }
 
   // Transferring
@@ -396,6 +215,10 @@ export function handleTransferSingle(event: TransferSingle): void {
       event.params.from,
       event.params.to,
       event.params.value,
+      event.transaction.hash,
+      event.block.timestamp,
+      event.block.number,
+      event.logIndex,
     );
   }
 }
@@ -409,17 +232,43 @@ export function handleTransferBatch(event: TransferBatch): void {
 
   for (let i = 0; i < event.params.ids.length; i++) {
     const badgeId = event.params.ids[i];
+    const logIndexWithOffset = event.logIndex.plus(BigInt.fromI32(i));
     // Minting
     if (from.toHexString() == "0x0000000000000000000000000000000000000000") {
-      mint(badgeId, to, event.params.values[i]);
+      mint(
+        badgeId,
+        to,
+        event.params.values[i],
+        event.transaction.hash,
+        event.block.timestamp,
+        event.block.number,
+        logIndexWithOffset,
+      );
     }
     // Burning
     else if (to.toHexString() == "0x0000000000000000000000000000000000000000") {
-      burn(badgeId, from, event.params.values[i]);
+      burn(
+        badgeId,
+        from,
+        event.params.values[i],
+        event.transaction.hash,
+        event.block.timestamp,
+        event.block.number,
+        logIndexWithOffset,
+      );
     }
     // Transferring
     else {
-      transfer(badgeId, from, to, event.params.values[i]);
+      transfer(
+        badgeId,
+        from,
+        to,
+        event.params.values[i],
+        event.transaction.hash,
+        event.block.timestamp,
+        event.block.number,
+        logIndexWithOffset,
+      );
     }
   }
 }
@@ -452,14 +301,6 @@ export function handleEditorsUpdated(event: EditorsUpdated): void {
     manager.managedBadges = updatedBadges;
     manager.save();
   }
-}
-
-function bigIntArrayToStringArray(arr: Array<BigInt>): string[] {
-  const result: string[] = [];
-  for (let i = 0; i < arr.length; i++) {
-    result.push(arr[i].toString());
-  }
-  return result;
 }
 
 export function handleBadgePermissions(event: BadgePermissions): void {
