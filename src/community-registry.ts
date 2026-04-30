@@ -7,18 +7,6 @@ import {
   CommunityRegistry,
 } from "../generated/CommunityRegistry/CommunityRegistry";
 import { findOrCreateUser } from "./user";
-import { fetchIpfsMetadata, getStringFromTypedMap } from "./utils/metadata";
-
-/**
- * Maps a tier string to its numeric rank.
- * unaffiliated=0, bronze=100, silver=10000, gold=1000000
- */
-function tierToRank(tier: string): BigInt {
-  if (tier == "bronze") return BigInt.fromI32(100);
-  if (tier == "silver") return BigInt.fromI32(10000);
-  if (tier == "gold") return BigInt.fromI32(1000000);
-  return BigInt.zero(); // unaffiliated
-}
 
 /**
  * CommunityBadgeCreated fires for any community-scoped badge created via
@@ -38,7 +26,7 @@ export function handleCommunityBadgeCreated(
   // Link this badge back to the community
   const badge = Badge.load(badgeId);
   if (badge != null) {
-    badge.communityId = communityId;
+    badge.community = communityId;
     badge.save();
   }
 }
@@ -66,8 +54,9 @@ export function handleCommunityCreated(event: CommunityCreated): void {
   if (community == null) {
     community = new Community(communityId);
     community.name = "";
-    community.tier = "unaffiliated";
-    community.tierRank = BigInt.zero();
+    community.tierId = BigInt.zero();
+    community.tierName = "unaffiliated";
+    community.tierExpiresAt = BigInt.zero();
     community.memberCount = BigInt.zero();
     community.createdAt = event.block.timestamp;
   }
@@ -93,8 +82,22 @@ export function handleCommunityCreated(event: CommunityCreated): void {
     const updatedCommunities = manager.managedCommunities;
     updatedCommunities.push(communityId);
     manager.managedCommunities = updatedCommunities;
-    manager.save();
   }
+
+  if (!manager.badges.includes(memberBadgeId)) {
+    const updatedBadges = manager.badges;
+    updatedBadges.push(memberBadgeId);
+    manager.badges = updatedBadges;
+  }
+
+  if (!manager.communities.includes(communityId)) {
+    const updatedCommunities = manager.communities;
+    updatedCommunities.push(communityId);
+    manager.communities = updatedCommunities;
+    community.memberCount = community.memberCount.plus(BigInt.fromI32(1)); // count the creator as the first member
+  }
+
+  manager.save();
 
   // Ensure the manager badge exists before saving the community, since
   // Community.managerBadge is non-nullable in the schema.
@@ -113,7 +116,7 @@ export function handleCommunityCreated(event: CommunityCreated): void {
     managerBadge.minters = [];
     managerBadge.burners = [];
     managerBadge.transferers = [];
-    managerBadge.communityId = communityId;
+    managerBadge.community = communityId;
     managerBadge.save();
   }
 
@@ -122,33 +125,21 @@ export function handleCommunityCreated(event: CommunityCreated): void {
     community.imageUrl = badgeImageUrl;
   }
 
-  const metaData = fetchIpfsMetadata(managerBadge.uri);
-
-  if (metaData !== null) {
-    const tier = getStringFromTypedMap(metaData, "tier");
-    if (tier !== null) {
-      community.tier = tier;
-      community.tierRank = tierToRank(tier);
-    }
-  } else {
-    community.tier = "unaffiliated";
-    community.tierRank = BigInt.zero();
-  }
-
   // Ensure manager badge is linked (may already be set by handleCommunityBadgeCreated)
-  if (managerBadge.communityId == null) {
-    managerBadge.communityId = communityId;
+  if (managerBadge.community == null) {
+    managerBadge.community = communityId;
     managerBadge.save();
   }
 
-  community.save();
-
   // Link the member badge to this community
   const memberBadge = Badge.load(memberBadgeId);
+
   if (memberBadge != null) {
-    memberBadge.communityId = communityId;
+    memberBadge.community = communityId;
     memberBadge.save();
   }
+
+  community.save();
 }
 
 /**

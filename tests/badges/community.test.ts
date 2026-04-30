@@ -79,8 +79,9 @@ function createAndSaveCommunity(
   community.createdAt = BigInt.fromI32(1683094249);
   community.managerBadge = managerBadgeId;
   community.memberCount = BigInt.zero();
-  community.tier = "unaffiliated";
-  community.tierRank = BigInt.zero();
+  community.tierId = BigInt.zero();
+  community.tierName = "unaffiliated";
+  community.tierExpiresAt = BigInt.zero();
   community.save();
   return community;
 }
@@ -182,7 +183,7 @@ describe("Community Mappings", () => {
       // Community "1", manager badge "200"
       const managerBadge = createAndSaveBadge("200", "Manager Badge");
       managerBadge.isCommunity = true;
-      managerBadge.communityId = "1";
+      managerBadge.community = "1";
       managerBadge.save();
 
       createAndSaveCommunity("1", "200", fromAddress.toHexString());
@@ -236,7 +237,7 @@ describe("Community Mappings", () => {
 
       const managerBadge = createAndSaveBadge("201", "Manager Badge");
       managerBadge.isCommunity = true;
-      managerBadge.communityId = "2";
+      managerBadge.community = "2";
       managerBadge.save();
 
       createAndSaveCommunity("2", "201", fromAddress.toHexString());
@@ -286,7 +287,7 @@ describe("Community Mappings", () => {
 
       const managerBadge = createAndSaveBadge("300", "Manager Badge");
       managerBadge.isCommunity = true;
-      managerBadge.communityId = "3";
+      managerBadge.community = "3";
       managerBadge.save();
 
       createAndSaveCommunity("3", "300", fromAddress.toHexString());
@@ -343,7 +344,7 @@ describe("Community Mappings", () => {
         "",
       );
       managerBadge.isCommunity = true;
-      managerBadge.communityId = "5";
+      managerBadge.community = "5";
       managerBadge.save();
 
       createAndSaveCommunity("5", "500", creatorAddress.toHexString());
@@ -400,7 +401,7 @@ describe("Community Mappings", () => {
       createAndSaveCommunity("10", "600", managerAddress.toHexString());
 
       const memberBadge = createAndSaveBadge("601", "Member Badge");
-      memberBadge.communityId = "10";
+      memberBadge.community = "10";
       memberBadge.save();
 
       createAndSaveUser(memberAddress, new Array());
@@ -434,7 +435,7 @@ describe("Community Mappings", () => {
       createAndSaveCommunity("11", "602", managerAddress.toHexString());
 
       const memberBadge = createAndSaveBadge("603", "Member Badge");
-      memberBadge.communityId = "11";
+      memberBadge.community = "11";
       memberBadge.save();
 
       createAndSaveUser(memberAddress, new Array());
@@ -474,7 +475,7 @@ describe("Community Mappings", () => {
       community.save();
 
       const memberBadge = createAndSaveBadge("605", "Member Badge");
-      memberBadge.communityId = "12";
+      memberBadge.community = "12";
       memberBadge.save();
 
       const member = createAndSaveUser(memberAddress, ["605"]);
@@ -520,7 +521,7 @@ describe("Community Mappings", () => {
       community.save();
 
       const memberBadge = createAndSaveBadge("607", "Member Badge");
-      memberBadge.communityId = "13";
+      memberBadge.community = "13";
       memberBadge.save();
 
       const fromUser = createAndSaveUser(fromAddress, ["607"]);
@@ -567,7 +568,7 @@ describe("Community Mappings", () => {
       createAndSaveCommunity("14", "608", managerAddress.toHexString());
 
       const memberBadge = createAndSaveBadge("609", "Member Badge");
-      memberBadge.communityId = "14";
+      memberBadge.community = "14";
       memberBadge.save();
 
       createAndSaveUser(memberAddress, new Array());

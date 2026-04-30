@@ -30,7 +30,7 @@ type Badge @entity(immutable: false) {
   holders: [User!]! @derivedFrom(field: "badges")
   holdersCount: BigInt!
   profileUser: User
-  communityId: String
+  community: Community
 }
 
 type Community @entity(immutable: false) {
@@ -39,14 +39,16 @@ type Community @entity(immutable: false) {
   description: String
   imageUrl: String
   createdAt: BigInt!
-  tier: String!
-  tierRank: BigInt!
+  tierId: BigInt!
+  tierName: String!
+  tierExpiresAt: BigInt!
   managerAddress: String!
   manager: User!
   managerBadge: Badge!
   memberBadge: Badge
   memberCount: BigInt!
   members: [User!]! @derivedFrom(field: "communities")
+  badges: [Badge!]! @derivedFrom(field: "community")
 }
 
 type _Schema_
