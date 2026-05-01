@@ -18,7 +18,7 @@ export function mint(
   txHash: Bytes,
   blockTimestamp: BigInt,
   blockNumber: BigInt,
-  logIndex: BigInt,
+  logKey: string,
 ): void {
   const badge = Badge.load(badgeId.toString());
   const user = findOrCreateUser(userId.toHexString());
@@ -45,8 +45,7 @@ export function mint(
     const community = Community.load(badge.community!);
     if (community != null) {
       // Always record the badge mint
-      const mintActivityId =
-        txHash.toHex() + "-" + logIndex.toString() + "-mint";
+      const mintActivityId = txHash.toHex() + "-" + logKey + "-mint";
       const mintActivity = new BadgeMintedActivity(mintActivityId);
       mintActivity.community = community.id;
       mintActivity.timestamp = blockTimestamp;
@@ -73,8 +72,7 @@ export function mint(
         community.memberCount = community.memberCount.plus(BigInt.fromI32(1));
         community.save();
 
-        const joinActivityId =
-          txHash.toHex() + "-" + logIndex.toString() + "-join";
+        const joinActivityId = txHash.toHex() + "-" + logKey + "-join";
         const joinActivity = new MemberJoinedActivity(joinActivityId);
         joinActivity.community = community.id;
         joinActivity.timestamp = blockTimestamp;
@@ -95,7 +93,7 @@ export function burn(
   txHash: Bytes,
   blockTimestamp: BigInt,
   blockNumber: BigInt,
-  logIndex: BigInt,
+  logKey: string,
 ): void {
   const badge = Badge.load(badgeId.toString());
   const user = findOrCreateUser(userId.toHexString());
@@ -130,7 +128,7 @@ export function burn(
           );
           community.save();
 
-          const activityId = txHash.toHex() + "-" + logIndex.toString();
+          const activityId = txHash.toHex() + "-" + logKey;
           const activity = new MemberLeftActivity(activityId);
           activity.community = community.id;
           activity.timestamp = blockTimestamp;
@@ -142,7 +140,7 @@ export function burn(
         }
       } else if (community != null) {
         // Manager badge or other community badge burned
-        const activityId = txHash.toHex() + "-" + logIndex.toString() + "-burn";
+        const activityId = txHash.toHex() + "-" + logKey + "-burn";
         const activity = new BadgeBurnedActivity(activityId);
         activity.community = community.id;
         activity.timestamp = blockTimestamp;
@@ -164,7 +162,7 @@ export function transfer(
   txHash: Bytes,
   blockTimestamp: BigInt,
   blockNumber: BigInt,
-  logIndex: BigInt,
+  logKey: string,
 ): void {
   const badge = Badge.load(badgeId.toString());
   const fromUser = findOrCreateUser(fromUserId.toHexString());
@@ -185,14 +183,12 @@ export function transfer(
 
   const alreadyHasBadge = toUser.badges.indexOf(badge.id) >= 0;
 
-  if (alreadyHasBadge) {
-    return;
+  if (!alreadyHasBadge) {
+    const updatedBadges = toUser.badges;
+    updatedBadges.push(badge.id);
+    toUser.badges = updatedBadges;
+    toUser.save();
   }
-
-  const updatedBadges = toUser.badges;
-  updatedBadges.push(badge.id);
-  toUser.badges = updatedBadges;
-  toUser.save();
 
   if (badge.community != null) {
     const community = Community.load(badge.community!);
@@ -218,7 +214,7 @@ export function transfer(
       community.manager = toUserId.toHexString();
       community.save();
 
-      const activityId = txHash.toHex() + "-" + logIndex.toString() + "-mgr";
+      const activityId = txHash.toHex() + "-" + logKey + "-mgr";
       const activity = new ManagerChangedActivity(activityId);
       activity.community = community.id;
       activity.timestamp = blockTimestamp;
@@ -248,7 +244,7 @@ export function transfer(
         community.memberCount = community.memberCount.plus(BigInt.fromI32(1));
         community.save();
 
-        const activityId = txHash.toHex() + "-" + logIndex.toString() + "-xfr";
+        const activityId = txHash.toHex() + "-" + logKey + "-xfr";
         const activity = new MemberTransferredActivity(activityId);
         activity.community = community.id;
         activity.timestamp = blockTimestamp;

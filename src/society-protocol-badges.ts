@@ -188,7 +188,7 @@ export function handleTransferSingle(event: TransferSingle): void {
       event.transaction.hash,
       event.block.timestamp,
       event.block.number,
-      event.logIndex,
+      event.logIndex.toString(),
     );
   }
 
@@ -204,7 +204,7 @@ export function handleTransferSingle(event: TransferSingle): void {
       event.transaction.hash,
       event.block.timestamp,
       event.block.number,
-      event.logIndex,
+      event.logIndex.toString(),
     );
   }
 
@@ -218,7 +218,7 @@ export function handleTransferSingle(event: TransferSingle): void {
       event.transaction.hash,
       event.block.timestamp,
       event.block.number,
-      event.logIndex,
+      event.logIndex.toString(),
     );
   }
 }
@@ -232,7 +232,7 @@ export function handleTransferBatch(event: TransferBatch): void {
 
   for (let i = 0; i < event.params.ids.length; i++) {
     const badgeId = event.params.ids[i];
-    const logIndexWithOffset = event.logIndex.plus(BigInt.fromI32(i));
+    const logKey = event.logIndex.toString() + "-" + i.toString();
     // Minting
     if (from.toHexString() == "0x0000000000000000000000000000000000000000") {
       mint(
@@ -242,7 +242,7 @@ export function handleTransferBatch(event: TransferBatch): void {
         event.transaction.hash,
         event.block.timestamp,
         event.block.number,
-        logIndexWithOffset,
+        logKey,
       );
     }
     // Burning
@@ -254,7 +254,7 @@ export function handleTransferBatch(event: TransferBatch): void {
         event.transaction.hash,
         event.block.timestamp,
         event.block.number,
-        logIndexWithOffset,
+        logKey,
       );
     }
     // Transferring
@@ -267,7 +267,7 @@ export function handleTransferBatch(event: TransferBatch): void {
         event.transaction.hash,
         event.block.timestamp,
         event.block.number,
-        logIndexWithOffset,
+        logKey,
       );
     }
   }
