@@ -1,5 +1,13 @@
 import { BigInt, Bytes, log } from "@graphprotocol/graph-ts";
-import { Badge, Community } from "../generated/schema";
+import {
+  Badge,
+  BadgeMintedActivity,
+  Community,
+  CommunityBadgeLinkedActivity,
+  CommunityCreatedActivity,
+  CommunityDetailsUpdatedActivity,
+  MemberJoinedActivity,
+} from "../generated/schema";
 import {
   CommunityBadgeCreated,
   CommunityCreated,
@@ -31,6 +39,16 @@ export function handleCommunityBadgeCreated(
       if (community != null) {
         community.badgeCount = community.badgeCount.plus(BigInt.fromI32(1));
         community.save();
+
+        const activityId =
+          event.transaction.hash.toHex() + "-" + event.logIndex.toString();
+        const activity = new CommunityBadgeLinkedActivity(activityId);
+        activity.community = communityId;
+        activity.timestamp = event.block.timestamp;
+        activity.blockNumber = event.block.number;
+        activity.txHash = event.transaction.hash;
+        activity.badge = badgeId;
+        activity.save();
       }
     }
     badge.community = communityId;
@@ -152,6 +170,51 @@ export function handleCommunityCreated(event: CommunityCreated): void {
     memberBadge.save();
   }
 
+  const baseId =
+    event.transaction.hash.toHex() + "-" + event.logIndex.toString();
+
+  const createdActivity = new CommunityCreatedActivity(baseId);
+  createdActivity.community = communityId;
+  createdActivity.timestamp = event.block.timestamp;
+  createdActivity.blockNumber = event.block.number;
+  createdActivity.txHash = event.transaction.hash;
+  createdActivity.creator = creatorAddress;
+  createdActivity.save();
+
+  // TransferSingle for the initial badge mints fires before CommunityCreated,
+  // so badge.community is null at that point and mint() cannot create activities.
+  // Emit them here instead.
+  const managerMintActivity = new BadgeMintedActivity(baseId + "-manager-mint");
+  managerMintActivity.community = communityId;
+  managerMintActivity.timestamp = event.block.timestamp;
+  managerMintActivity.blockNumber = event.block.number;
+  managerMintActivity.txHash = event.transaction.hash;
+  managerMintActivity.badge = managerBadgeId;
+  managerMintActivity.user = manager.id;
+  managerMintActivity.save();
+
+  if (memberBadge != null) {
+    const memberMintActivity = new BadgeMintedActivity(baseId + "-member-mint");
+    memberMintActivity.community = communityId;
+    memberMintActivity.timestamp = event.block.timestamp;
+    memberMintActivity.blockNumber = event.block.number;
+    memberMintActivity.txHash = event.transaction.hash;
+    memberMintActivity.badge = memberBadgeId;
+    memberMintActivity.user = manager.id;
+    memberMintActivity.save();
+
+    const memberJoinActivity = new MemberJoinedActivity(
+      baseId + "-member-join",
+    );
+    memberJoinActivity.community = communityId;
+    memberJoinActivity.timestamp = event.block.timestamp;
+    memberJoinActivity.blockNumber = event.block.number;
+    memberJoinActivity.txHash = event.transaction.hash;
+    memberJoinActivity.badge = memberBadgeId;
+    memberJoinActivity.user = manager.id;
+    memberJoinActivity.save();
+  }
+
   community.save();
 }
 
@@ -178,4 +241,13 @@ export function handleCommunityDetailsUpdated(
   community.name = event.params.name;
   community.description = event.params.description;
   community.save();
+
+  const activityId =
+    event.transaction.hash.toHex() + "-" + event.logIndex.toString();
+  const activity = new CommunityDetailsUpdatedActivity(activityId);
+  activity.community = communityId;
+  activity.timestamp = event.block.timestamp;
+  activity.blockNumber = event.block.number;
+  activity.txHash = event.transaction.hash;
+  activity.save();
 }
