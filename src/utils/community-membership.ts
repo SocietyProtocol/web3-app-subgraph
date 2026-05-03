@@ -142,7 +142,7 @@ export function burn(
           const activityId = txHash.toHex() + "-" + logKey;
           const activity = new MemberLeftActivity(activityId);
           activity.community = community.id;
-          activity.timestamp = blockTimestamp;
+          activity.timestamp = blockTimestamp.plus(BigInt.fromI32(1));
           activity.blockNumber = blockNumber;
           activity.txHash = txHash;
           activity.badge = badge.id;
@@ -152,7 +152,7 @@ export function burn(
           const joinActivityId = user.id + "-" + community.id + "-member-join";
           const joinActivity = MemberJoinedActivity.load(joinActivityId);
           if (joinActivity != null) {
-            joinActivity.leftAt = blockTimestamp;
+            joinActivity.leftAt = activity.timestamp;
             joinActivity.save();
           }
         }
@@ -162,7 +162,6 @@ export function burn(
         const activity = new BadgeBurnedActivity(activityId);
         activity.community = community.id;
         activity.timestamp = blockTimestamp;
-        activity.timestamp = blockTimestamp.plus(BigInt.fromI32(1));
         activity.blockNumber = blockNumber;
         activity.txHash = txHash;
         activity.badge = badge.id;
