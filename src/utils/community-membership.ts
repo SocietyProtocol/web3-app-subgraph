@@ -129,6 +129,16 @@ export function burn(
           );
           community.save();
 
+          const burnActivityId = txHash.toHex() + "-" + logKey + "-burn";
+          const burnActivity = new BadgeBurnedActivity(burnActivityId);
+          burnActivity.community = community.id;
+          burnActivity.timestamp = blockTimestamp;
+          burnActivity.blockNumber = blockNumber;
+          burnActivity.txHash = txHash;
+          burnActivity.badge = badge.id;
+          burnActivity.user = user.id;
+          burnActivity.save();
+
           const activityId = txHash.toHex() + "-" + logKey;
           const activity = new MemberLeftActivity(activityId);
           activity.community = community.id;
