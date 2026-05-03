@@ -162,6 +162,7 @@ export function burn(
         const activity = new BadgeBurnedActivity(activityId);
         activity.community = community.id;
         activity.timestamp = blockTimestamp;
+        activity.timestamp = blockTimestamp.plus(BigInt.fromI32(1));
         activity.blockNumber = blockNumber;
         activity.txHash = txHash;
         activity.badge = badge.id;
