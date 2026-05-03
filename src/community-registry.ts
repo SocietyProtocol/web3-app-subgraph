@@ -170,6 +170,8 @@ export function handleCommunityCreated(event: CommunityCreated): void {
     memberBadge.save();
   }
 
+  community.save();
+
   const baseId =
     event.transaction.hash.toHex() + "-" + event.logIndex.toString();
 
@@ -184,9 +186,12 @@ export function handleCommunityCreated(event: CommunityCreated): void {
   // TransferSingle for the initial badge mints fires before CommunityCreated,
   // so badge.community is null at that point and mint() cannot create activities.
   // Emit them here instead.
+  // Timestamps are offset by 1 each so that a timestamp-desc query returns
+  // them in the correct logical order: CommunityCreated → manager mint →
+  // member mint → MemberJoined.
   const managerMintActivity = new BadgeMintedActivity(baseId + "-manager-mint");
   managerMintActivity.community = communityId;
-  managerMintActivity.timestamp = event.block.timestamp;
+  managerMintActivity.timestamp = event.block.timestamp.plus(BigInt.fromI32(1));
   managerMintActivity.blockNumber = event.block.number;
   managerMintActivity.txHash = event.transaction.hash;
   managerMintActivity.badge = managerBadgeId;
@@ -196,7 +201,9 @@ export function handleCommunityCreated(event: CommunityCreated): void {
   if (memberBadge != null) {
     const memberMintActivity = new BadgeMintedActivity(baseId + "-member-mint");
     memberMintActivity.community = communityId;
-    memberMintActivity.timestamp = event.block.timestamp;
+    memberMintActivity.timestamp = event.block.timestamp.plus(
+      BigInt.fromI32(2),
+    );
     memberMintActivity.blockNumber = event.block.number;
     memberMintActivity.txHash = event.transaction.hash;
     memberMintActivity.badge = memberBadgeId;
@@ -207,7 +214,9 @@ export function handleCommunityCreated(event: CommunityCreated): void {
       manager.id + "-" + communityId + "-member-join",
     );
     memberJoinActivity.community = communityId;
-    memberJoinActivity.timestamp = event.block.timestamp;
+    memberJoinActivity.timestamp = event.block.timestamp.plus(
+      BigInt.fromI32(3),
+    );
     memberJoinActivity.blockNumber = event.block.number;
     memberJoinActivity.txHash = event.transaction.hash;
     memberJoinActivity.badge = memberBadgeId;
@@ -215,8 +224,6 @@ export function handleCommunityCreated(event: CommunityCreated): void {
     memberJoinActivity.leftAt = null;
     memberJoinActivity.save();
   }
-
-  community.save();
 }
 
 /**
