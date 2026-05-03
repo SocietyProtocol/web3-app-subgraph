@@ -7,7 +7,12 @@ import {
   test,
 } from "matchstick-as/assembly/index";
 import { Address, BigInt, Bytes } from "@graphprotocol/graph-ts";
-import { Badge, Community, User } from "../../generated/schema";
+import {
+  Badge,
+  Community,
+  MemberJoinedActivity,
+  User,
+} from "../../generated/schema";
 import { handleTransferSingle } from "../../src/society-protocol-badges";
 import {
   createTransferSingleEvent,
@@ -75,6 +80,24 @@ function createAndSaveCommunity(
   community.tierExpiresAt = BigInt.zero();
   community.save();
   return community;
+}
+
+function createAndSaveMemberJoinedActivity(
+  userId: string,
+  communityId: string,
+  badgeId: string,
+): MemberJoinedActivity {
+  const id = userId + "-" + communityId + "-member-join";
+  const activity = new MemberJoinedActivity(id);
+  activity.community = communityId;
+  activity.badge = badgeId;
+  activity.user = userId;
+  activity.timestamp = BigInt.fromI32(1683094249);
+  activity.blockNumber = BigInt.fromI32(1);
+  activity.txHash = new Bytes(0);
+  activity.leftAt = null;
+  activity.save();
+  return activity;
 }
 
 // ── MemberJoinedActivity ──────────────────────────────────────────────────────
@@ -387,6 +410,40 @@ describe("MemberLeftActivity", () => {
       "No MemberLeftActivity when user was not a community member",
       [],
     );
+  });
+
+  test("Should set leftAt on MemberJoinedActivity when member badge is burned", () => {
+    const member = Address.fromString(
+      "0x5eA1474CeFA1ea5986327F97932B587deD802CF7",
+    );
+    const memberId = member.toHexString();
+
+    createAndSaveBadge("403", "42");
+    const community = createAndSaveCommunity("42", "997");
+    community.memberCount = BigInt.fromI32(1);
+    community.save();
+    createAndSaveUser(member, ["403"], ["42"]);
+    createAndSaveMemberJoinedActivity(memberId, "42", "403");
+
+    handleTransferSingle(
+      createTransferSingleEvent(
+        member,
+        Address.fromString(ZERO_ADDRESS),
+        BigInt.fromI32(403),
+        BigInt.fromI32(1),
+      ),
+    );
+
+    assert.entityCount("MemberLeftActivity", 1);
+    const joinActivityId = memberId + "-42-member-join";
+    assert.fieldEquals(
+      "MemberJoinedActivity",
+      joinActivityId,
+      "leftAt",
+      "1", // createTransferSingleEvent uses block.timestamp = 1
+    );
+
+    log.success("leftAt set on MemberJoinedActivity when member leaves", []);
   });
 });
 

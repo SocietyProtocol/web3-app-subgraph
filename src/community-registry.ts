@@ -204,7 +204,7 @@ export function handleCommunityCreated(event: CommunityCreated): void {
     memberMintActivity.save();
 
     const memberJoinActivity = new MemberJoinedActivity(
-      baseId + "-member-join",
+      manager.id + "-" + communityId + "-member-join",
     );
     memberJoinActivity.community = communityId;
     memberJoinActivity.timestamp = event.block.timestamp;
@@ -212,6 +212,7 @@ export function handleCommunityCreated(event: CommunityCreated): void {
     memberJoinActivity.txHash = event.transaction.hash;
     memberJoinActivity.badge = memberBadgeId;
     memberJoinActivity.user = manager.id;
+    memberJoinActivity.leftAt = null;
     memberJoinActivity.save();
   }
 

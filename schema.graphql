@@ -90,7 +90,7 @@ type CommunityBadgeLinkedActivity implements CommunityActivityEvent
 }
 
 type MemberJoinedActivity implements CommunityActivityEvent
-  @entity(immutable: true) {
+  @entity(immutable: false) {
   id: ID!
   community: Community!
   timestamp: BigInt!
@@ -98,6 +98,7 @@ type MemberJoinedActivity implements CommunityActivityEvent
   txHash: Bytes!
   badge: Badge!
   user: User!
+  leftAt: BigInt
 }
 
 type MemberLeftActivity implements CommunityActivityEvent

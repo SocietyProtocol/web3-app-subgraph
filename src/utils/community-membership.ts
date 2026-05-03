@@ -72,7 +72,7 @@ export function mint(
         community.memberCount = community.memberCount.plus(BigInt.fromI32(1));
         community.save();
 
-        const joinActivityId = txHash.toHex() + "-" + logKey + "-join";
+        const joinActivityId = user.id + "-" + community.id + "-member-join";
         const joinActivity = new MemberJoinedActivity(joinActivityId);
         joinActivity.community = community.id;
         joinActivity.timestamp = blockTimestamp;
@@ -80,6 +80,7 @@ export function mint(
         joinActivity.txHash = txHash;
         joinActivity.badge = badge.id;
         joinActivity.user = user.id;
+        joinActivity.leftAt = null;
         joinActivity.save();
       }
     }
@@ -137,6 +138,13 @@ export function burn(
           activity.badge = badge.id;
           activity.user = user.id;
           activity.save();
+
+          const joinActivityId = user.id + "-" + community.id + "-member-join";
+          const joinActivity = MemberJoinedActivity.load(joinActivityId);
+          if (joinActivity != null) {
+            joinActivity.leftAt = blockTimestamp;
+            joinActivity.save();
+          }
         }
       } else if (community != null) {
         // Manager badge or other community badge burned

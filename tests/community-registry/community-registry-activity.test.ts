@@ -434,10 +434,8 @@ describe("Initial mint activities on CommunityCreated", () => {
     handleCommunityCreated(event);
 
     const activityId =
-      event.transaction.hash.toHex() +
-      "-" +
-      event.logIndex.toString() +
-      "-member-join";
+      Address.fromString(DEFAULT_CREATOR_ADDRESS).toHexString() +
+      "-40-member-join";
     assert.fieldEquals("MemberJoinedActivity", activityId, "community", "40");
     assert.fieldEquals("MemberJoinedActivity", activityId, "badge", "41");
     assert.fieldEquals(
