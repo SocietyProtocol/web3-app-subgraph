@@ -89,6 +89,13 @@ type CommunityBadgeLinkedActivity implements CommunityActivityEvent
   badge: Badge!
 }
 
+type CommunityMembership @entity(immutable: false) {
+  id: ID!
+  user: User!
+  community: Community!
+  joinActivity: MemberJoinedActivity!
+}
+
 type MemberJoinedActivity implements CommunityActivityEvent
   @entity(immutable: false) {
   id: ID!
@@ -98,7 +105,6 @@ type MemberJoinedActivity implements CommunityActivityEvent
   txHash: Bytes!
   badge: Badge!
   user: User!
-  leftAt: BigInt
 }
 
 type MemberLeftActivity implements CommunityActivityEvent

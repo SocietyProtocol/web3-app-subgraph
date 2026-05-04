@@ -15,6 +15,10 @@ import {
 } from "../../generated/schema";
 import { handleTransferSingle } from "../../src/society-protocol-badges";
 import {
+  generateMembershipId,
+  upsertCommunityMembership,
+} from "../../src/utils/community-membership";
+import {
   createTransferSingleEvent,
   DEFAULT_CREATOR_ADDRESS,
   ZERO_ADDRESS,
@@ -95,8 +99,10 @@ function createAndSaveMemberJoinedActivity(
   activity.timestamp = BigInt.fromI32(1683094249);
   activity.blockNumber = BigInt.fromI32(1);
   activity.txHash = new Bytes(0);
-  activity.leftAt = null;
   activity.save();
+
+  upsertCommunityMembership(userId, communityId, id);
+
   return activity;
 }
 
@@ -412,7 +418,7 @@ describe("MemberLeftActivity", () => {
     );
   });
 
-  test("Should set leftAt on MemberJoinedActivity when member badge is burned", () => {
+  test("Should remove CommunityMembership pointer when member badge is burned", () => {
     const member = Address.fromString(
       "0x5eA1474CeFA1ea5986327F97932B587deD802CF7",
     );
@@ -435,15 +441,10 @@ describe("MemberLeftActivity", () => {
     );
 
     assert.entityCount("MemberLeftActivity", 1);
-    const joinActivityId = memberId + "-42-member-join";
-    assert.fieldEquals(
-      "MemberJoinedActivity",
-      joinActivityId,
-      "leftAt",
-      "2", // leftAt follows MemberLeftActivity timestamp (block.timestamp + 1)
-    );
+    // CommunityMembership pointer should be cleared after leaving
+    assert.entityCount("CommunityMembership", 0);
 
-    log.success("leftAt set on MemberJoinedActivity when member leaves", []);
+    log.success("CommunityMembership removed when member badge burned", []);
   });
 });
 

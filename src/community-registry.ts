@@ -15,6 +15,10 @@ import {
   CommunityRegistry,
 } from "../generated/CommunityRegistry/CommunityRegistry";
 import { findOrCreateUser } from "./user";
+import {
+  generateActivityId,
+  upsertCommunityMembership,
+} from "./utils/community-membership";
 
 /**
  * CommunityBadgeCreated fires for any community-scoped badge created via
@@ -40,8 +44,11 @@ export function handleCommunityBadgeCreated(
         community.badgeCount = community.badgeCount.plus(BigInt.fromI32(1));
         community.save();
 
-        const activityId =
-          event.transaction.hash.toHex() + "-" + event.logIndex.toString();
+        const activityId = generateActivityId(
+          event.transaction.hash,
+          event.logIndex.toString(),
+          "badge-linked",
+        );
         const activity = new CommunityBadgeLinkedActivity(activityId);
         activity.community = communityId;
         activity.timestamp = event.block.timestamp;
@@ -172,10 +179,15 @@ export function handleCommunityCreated(event: CommunityCreated): void {
 
   community.save();
 
-  const baseId =
-    event.transaction.hash.toHex() + "-" + event.logIndex.toString();
+  const baseId = generateActivityId(
+    event.transaction.hash,
+    event.logIndex.toString(),
+    "",
+  );
 
-  const createdActivity = new CommunityCreatedActivity(baseId);
+  const createdActivity = new CommunityCreatedActivity(
+    baseId + "-community-created",
+  );
   createdActivity.community = communityId;
   createdActivity.timestamp = event.block.timestamp;
   createdActivity.blockNumber = event.block.number;
@@ -211,7 +223,7 @@ export function handleCommunityCreated(event: CommunityCreated): void {
     memberMintActivity.save();
 
     const memberJoinActivity = new MemberJoinedActivity(
-      manager.id + "-" + communityId + "-member-join",
+      baseId + "-member-join",
     );
     memberJoinActivity.community = communityId;
     memberJoinActivity.timestamp = event.block.timestamp.plus(
@@ -221,8 +233,9 @@ export function handleCommunityCreated(event: CommunityCreated): void {
     memberJoinActivity.txHash = event.transaction.hash;
     memberJoinActivity.badge = memberBadgeId;
     memberJoinActivity.user = manager.id;
-    memberJoinActivity.leftAt = null;
     memberJoinActivity.save();
+
+    upsertCommunityMembership(manager.id, communityId, baseId + "-member-join");
   }
 }
 
@@ -250,8 +263,11 @@ export function handleCommunityDetailsUpdated(
   community.description = event.params.description;
   community.save();
 
-  const activityId =
-    event.transaction.hash.toHex() + "-" + event.logIndex.toString();
+  const activityId = generateActivityId(
+    event.transaction.hash,
+    event.logIndex.toString(),
+    "details-updated",
+  );
   const activity = new CommunityDetailsUpdatedActivity(activityId);
   activity.community = communityId;
   activity.timestamp = event.block.timestamp;
