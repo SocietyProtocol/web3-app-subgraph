@@ -97,7 +97,7 @@ type CommunityMembership @entity(immutable: false) {
 }
 
 type MemberJoinedActivity implements CommunityActivityEvent
-  @entity(immutable: false) {
+  @entity(immutable: true) {
   id: ID!
   community: Community!
   timestamp: BigInt!
