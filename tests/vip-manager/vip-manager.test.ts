@@ -15,6 +15,7 @@ import {
   handleTokensLocked,
   handleTokensUnlocked,
 } from "../../src/vip-manager";
+import { generateActivityId } from "../../src/utils/community-membership";
 import {
   userAddress1,
   userAddress2,
@@ -563,10 +564,11 @@ describe("VipManager — CommunityTierRevokedActivity", () => {
     );
     handleCommunityTierRevoked(revokeEvent);
 
-    const activityId =
-      revokeEvent.transaction.hash.toHex() +
-      "-" +
-      revokeEvent.logIndex.toString();
+    const activityId = generateActivityId(
+      revokeEvent.transaction.hash,
+      revokeEvent.logIndex.toString(),
+      "tier-revoked",
+    );
     assert.fieldEquals(
       "CommunityTierRevokedActivity",
       activityId,

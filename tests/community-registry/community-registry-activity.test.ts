@@ -13,6 +13,7 @@ import {
   handleCommunityCreated,
   handleCommunityDetailsUpdated,
 } from "../../src/community-registry";
+import { generateActivityId } from "../../src/utils/community-membership";
 import {
   createCommunityBadgeCreatedEvent,
   createCommunityCreatedEvent,
@@ -357,11 +358,11 @@ describe("Initial mint activities on CommunityCreated", () => {
     );
     handleCommunityCreated(event);
 
-    const activityId =
-      event.transaction.hash.toHex() +
-      "-" +
-      event.logIndex.toString() +
-      "-manager-mint";
+    const activityId = generateActivityId(
+      event.transaction.hash,
+      event.logIndex.toString(),
+      "manager-mint",
+    );
     assert.fieldEquals("BadgeMintedActivity", activityId, "community", "10");
     assert.fieldEquals("BadgeMintedActivity", activityId, "badge", "10");
     assert.fieldEquals(
@@ -385,11 +386,11 @@ describe("Initial mint activities on CommunityCreated", () => {
     );
     handleCommunityCreated(event);
 
-    const activityId =
-      event.transaction.hash.toHex() +
-      "-" +
-      event.logIndex.toString() +
-      "-member-mint";
+    const activityId = generateActivityId(
+      event.transaction.hash,
+      event.logIndex.toString(),
+      "member-mint",
+    );
     assert.fieldEquals("BadgeMintedActivity", activityId, "community", "20");
     assert.fieldEquals("BadgeMintedActivity", activityId, "badge", "21");
     assert.fieldEquals(
@@ -433,11 +434,11 @@ describe("Initial mint activities on CommunityCreated", () => {
     );
     handleCommunityCreated(event);
 
-    const activityId =
-      event.transaction.hash.toHex() +
-      "-" +
-      event.logIndex.toString() +
-      "-member-join";
+    const activityId = generateActivityId(
+      event.transaction.hash,
+      event.logIndex.toString(),
+      "member-join",
+    );
     assert.fieldEquals("MemberJoinedActivity", activityId, "community", "40");
     assert.fieldEquals("MemberJoinedActivity", activityId, "badge", "41");
     assert.fieldEquals(

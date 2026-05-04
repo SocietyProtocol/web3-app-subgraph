@@ -89,6 +89,13 @@ type CommunityBadgeLinkedActivity implements CommunityActivityEvent
   badge: Badge!
 }
 
+type CommunityMembership @entity(immutable: false) {
+  id: ID!
+  user: User!
+  community: Community!
+  joinActivity: MemberJoinedActivity!
+}
+
 type MemberJoinedActivity implements CommunityActivityEvent
   @entity(immutable: true) {
   id: ID!

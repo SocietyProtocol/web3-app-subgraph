@@ -7,8 +7,17 @@ import {
   test,
 } from "matchstick-as/assembly/index";
 import { Address, BigInt, Bytes } from "@graphprotocol/graph-ts";
-import { Badge, Community, User } from "../../generated/schema";
+import {
+  Badge,
+  Community,
+  MemberJoinedActivity,
+  User,
+} from "../../generated/schema";
 import { handleTransferSingle } from "../../src/society-protocol-badges";
+import {
+  generateMembershipId,
+  upsertCommunityMembership,
+} from "../../src/utils/community-membership";
 import {
   createTransferSingleEvent,
   DEFAULT_CREATOR_ADDRESS,
@@ -75,6 +84,26 @@ function createAndSaveCommunity(
   community.tierExpiresAt = BigInt.zero();
   community.save();
   return community;
+}
+
+function createAndSaveMemberJoinedActivity(
+  userId: string,
+  communityId: string,
+  badgeId: string,
+): MemberJoinedActivity {
+  const id = userId + "-" + communityId + "-member-join";
+  const activity = new MemberJoinedActivity(id);
+  activity.community = communityId;
+  activity.badge = badgeId;
+  activity.user = userId;
+  activity.timestamp = BigInt.fromI32(1683094249);
+  activity.blockNumber = BigInt.fromI32(1);
+  activity.txHash = new Bytes(0);
+  activity.save();
+
+  upsertCommunityMembership(userId, communityId, id);
+
+  return activity;
 }
 
 // ── MemberJoinedActivity ──────────────────────────────────────────────────────
@@ -242,7 +271,7 @@ describe("BadgeMintedActivity", () => {
       "Community",
       "31",
       "managerAddress",
-      manager.toHexString(),
+      DEFAULT_CREATOR_ADDRESS,
     );
 
     log.success(
@@ -388,6 +417,35 @@ describe("MemberLeftActivity", () => {
       [],
     );
   });
+
+  test("Should remove CommunityMembership pointer when member badge is burned", () => {
+    const member = Address.fromString(
+      "0x5eA1474CeFA1ea5986327F97932B587deD802CF7",
+    );
+    const memberId = member.toHexString();
+
+    createAndSaveBadge("403", "42");
+    const community = createAndSaveCommunity("42", "997");
+    community.memberCount = BigInt.fromI32(1);
+    community.save();
+    createAndSaveUser(member, ["403"], ["42"]);
+    createAndSaveMemberJoinedActivity(memberId, "42", "403");
+
+    handleTransferSingle(
+      createTransferSingleEvent(
+        member,
+        Address.fromString(ZERO_ADDRESS),
+        BigInt.fromI32(403),
+        BigInt.fromI32(1),
+      ),
+    );
+
+    assert.entityCount("MemberLeftActivity", 1);
+    // CommunityMembership pointer should be cleared after leaving
+    assert.entityCount("CommunityMembership", 0);
+
+    log.success("CommunityMembership removed when member badge burned", []);
+  });
 });
 
 // ── BadgeBurnedActivity ───────────────────────────────────────────────────────
@@ -420,6 +478,58 @@ describe("BadgeBurnedActivity", () => {
     assert.entityCount("MemberLeftActivity", 0); // not a member badge
 
     log.success("BadgeBurnedActivity created when manager badge burned", []);
+  });
+
+  test("Should create BadgeBurnedActivity when member badge is burned", () => {
+    const member = Address.fromString(
+      "0x5eA1474CeFA1ea5986327F97932B587deD802CF7",
+    );
+
+    createAndSaveBadge("501", "51");
+    const community = createAndSaveCommunity("51", "999", 1);
+    community.save();
+    createAndSaveUser(member, ["501"], ["51"]);
+
+    handleTransferSingle(
+      createTransferSingleEvent(
+        member,
+        Address.fromString(ZERO_ADDRESS),
+        BigInt.fromI32(501),
+        BigInt.fromI32(1),
+      ),
+    );
+
+    assert.entityCount("BadgeBurnedActivity", 1);
+    assert.entityCount("MemberLeftActivity", 1);
+
+    log.success("BadgeBurnedActivity created when member badge burned", []);
+  });
+
+  test("Should create BadgeBurnedActivity for non-manager community badge even when user is not in community", () => {
+    const holder = Address.fromString(
+      "0xf3dBd9F4C902c7183E0fd22bFdbAF5ed330845c4",
+    );
+
+    createAndSaveBadge("502", "52");
+    createAndSaveCommunity("52", "998");
+    createAndSaveUser(holder, ["502"], []); // holder has badge but is not in user.communities
+
+    handleTransferSingle(
+      createTransferSingleEvent(
+        holder,
+        Address.fromString(ZERO_ADDRESS),
+        BigInt.fromI32(502),
+        BigInt.fromI32(1),
+      ),
+    );
+
+    assert.entityCount("BadgeBurnedActivity", 1);
+    assert.entityCount("MemberLeftActivity", 0);
+
+    log.success(
+      "BadgeBurnedActivity created for non-manager community badge burn without member leave",
+      [],
+    );
   });
 });
 

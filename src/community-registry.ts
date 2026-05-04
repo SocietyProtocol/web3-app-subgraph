@@ -15,6 +15,10 @@ import {
   CommunityRegistry,
 } from "../generated/CommunityRegistry/CommunityRegistry";
 import { findOrCreateUser } from "./user";
+import {
+  generateActivityId,
+  upsertCommunityMembership,
+} from "./utils/community-membership";
 
 /**
  * CommunityBadgeCreated fires for any community-scoped badge created via
@@ -40,8 +44,11 @@ export function handleCommunityBadgeCreated(
         community.badgeCount = community.badgeCount.plus(BigInt.fromI32(1));
         community.save();
 
-        const activityId =
-          event.transaction.hash.toHex() + "-" + event.logIndex.toString();
+        const activityId = generateActivityId(
+          event.transaction.hash,
+          event.logIndex.toString(),
+          "badge-linked",
+        );
         const activity = new CommunityBadgeLinkedActivity(activityId);
         activity.community = communityId;
         activity.timestamp = event.block.timestamp;
@@ -170,10 +177,17 @@ export function handleCommunityCreated(event: CommunityCreated): void {
     memberBadge.save();
   }
 
-  const baseId =
-    event.transaction.hash.toHex() + "-" + event.logIndex.toString();
+  community.save();
 
-  const createdActivity = new CommunityCreatedActivity(baseId);
+  const baseId = generateActivityId(
+    event.transaction.hash,
+    event.logIndex.toString(),
+    "",
+  );
+
+  const createdActivity = new CommunityCreatedActivity(
+    baseId + "-community-created",
+  );
   createdActivity.community = communityId;
   createdActivity.timestamp = event.block.timestamp;
   createdActivity.blockNumber = event.block.number;
@@ -184,9 +198,12 @@ export function handleCommunityCreated(event: CommunityCreated): void {
   // TransferSingle for the initial badge mints fires before CommunityCreated,
   // so badge.community is null at that point and mint() cannot create activities.
   // Emit them here instead.
+  // Timestamps are offset by 1 each so that a timestamp-asc query returns
+  // them in the correct logical order: CommunityCreated → manager mint →
+  // member mint → MemberJoined.
   const managerMintActivity = new BadgeMintedActivity(baseId + "-manager-mint");
   managerMintActivity.community = communityId;
-  managerMintActivity.timestamp = event.block.timestamp;
+  managerMintActivity.timestamp = event.block.timestamp.plus(BigInt.fromI32(1));
   managerMintActivity.blockNumber = event.block.number;
   managerMintActivity.txHash = event.transaction.hash;
   managerMintActivity.badge = managerBadgeId;
@@ -196,7 +213,9 @@ export function handleCommunityCreated(event: CommunityCreated): void {
   if (memberBadge != null) {
     const memberMintActivity = new BadgeMintedActivity(baseId + "-member-mint");
     memberMintActivity.community = communityId;
-    memberMintActivity.timestamp = event.block.timestamp;
+    memberMintActivity.timestamp = event.block.timestamp.plus(
+      BigInt.fromI32(2),
+    );
     memberMintActivity.blockNumber = event.block.number;
     memberMintActivity.txHash = event.transaction.hash;
     memberMintActivity.badge = memberBadgeId;
@@ -207,15 +226,17 @@ export function handleCommunityCreated(event: CommunityCreated): void {
       baseId + "-member-join",
     );
     memberJoinActivity.community = communityId;
-    memberJoinActivity.timestamp = event.block.timestamp;
+    memberJoinActivity.timestamp = event.block.timestamp.plus(
+      BigInt.fromI32(3),
+    );
     memberJoinActivity.blockNumber = event.block.number;
     memberJoinActivity.txHash = event.transaction.hash;
     memberJoinActivity.badge = memberBadgeId;
     memberJoinActivity.user = manager.id;
     memberJoinActivity.save();
-  }
 
-  community.save();
+    upsertCommunityMembership(manager.id, communityId, baseId + "-member-join");
+  }
 }
 
 /**
@@ -242,8 +263,11 @@ export function handleCommunityDetailsUpdated(
   community.description = event.params.description;
   community.save();
 
-  const activityId =
-    event.transaction.hash.toHex() + "-" + event.logIndex.toString();
+  const activityId = generateActivityId(
+    event.transaction.hash,
+    event.logIndex.toString(),
+    "details-updated",
+  );
   const activity = new CommunityDetailsUpdatedActivity(activityId);
   activity.community = communityId;
   activity.timestamp = event.block.timestamp;

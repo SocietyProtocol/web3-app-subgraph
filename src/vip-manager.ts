@@ -1,4 +1,5 @@
 import { Address, BigInt } from "@graphprotocol/graph-ts";
+import { generateActivityId } from "./utils/community-membership";
 import {
   CommunityTierGranted,
   CommunityTierRevoked,
@@ -42,8 +43,11 @@ export function handleCommunityTierGranted(event: CommunityTierGranted): void {
   community.tierExpiresAt = event.params.expiry;
   community.save();
 
-  const activityId =
-    event.transaction.hash.toHex() + "-" + event.logIndex.toString();
+  const activityId = generateActivityId(
+    event.transaction.hash,
+    event.logIndex.toString(),
+    "tier-granted",
+  );
   const activity = new CommunityTierGrantedActivity(activityId);
   activity.community = communityId;
   activity.timestamp = event.block.timestamp;
@@ -68,8 +72,11 @@ export function handleCommunityTierRevoked(event: CommunityTierRevoked): void {
   community.tierExpiresAt = BigInt.zero();
   community.save();
 
-  const activityId =
-    event.transaction.hash.toHex() + "-" + event.logIndex.toString();
+  const activityId = generateActivityId(
+    event.transaction.hash,
+    event.logIndex.toString(),
+    "tier-revoked",
+  );
   const activity = new CommunityTierRevokedActivity(activityId);
   activity.community = communityId;
   activity.timestamp = event.block.timestamp;
