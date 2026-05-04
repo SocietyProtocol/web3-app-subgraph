@@ -265,7 +265,7 @@ describe("BadgeMintedActivity", () => {
       "Community",
       "31",
       "managerAddress",
-      manager.toHexString(),
+      DEFAULT_CREATOR_ADDRESS,
     );
 
     log.success(
@@ -440,7 +440,7 @@ describe("MemberLeftActivity", () => {
       "MemberJoinedActivity",
       joinActivityId,
       "leftAt",
-      "1", // createTransferSingleEvent uses block.timestamp = 1
+      "2", // leftAt follows MemberLeftActivity timestamp (block.timestamp + 1)
     );
 
     log.success("leftAt set on MemberJoinedActivity when member leaves", []);
@@ -477,6 +477,58 @@ describe("BadgeBurnedActivity", () => {
     assert.entityCount("MemberLeftActivity", 0); // not a member badge
 
     log.success("BadgeBurnedActivity created when manager badge burned", []);
+  });
+
+  test("Should create BadgeBurnedActivity when member badge is burned", () => {
+    const member = Address.fromString(
+      "0x5eA1474CeFA1ea5986327F97932B587deD802CF7",
+    );
+
+    createAndSaveBadge("501", "51");
+    const community = createAndSaveCommunity("51", "999", 1);
+    community.save();
+    createAndSaveUser(member, ["501"], ["51"]);
+
+    handleTransferSingle(
+      createTransferSingleEvent(
+        member,
+        Address.fromString(ZERO_ADDRESS),
+        BigInt.fromI32(501),
+        BigInt.fromI32(1),
+      ),
+    );
+
+    assert.entityCount("BadgeBurnedActivity", 1);
+    assert.entityCount("MemberLeftActivity", 1);
+
+    log.success("BadgeBurnedActivity created when member badge burned", []);
+  });
+
+  test("Should create BadgeBurnedActivity for non-manager community badge even when user is not in community", () => {
+    const holder = Address.fromString(
+      "0xf3dBd9F4C902c7183E0fd22bFdbAF5ed330845c4",
+    );
+
+    createAndSaveBadge("502", "52");
+    createAndSaveCommunity("52", "998");
+    createAndSaveUser(holder, ["502"], []); // holder has badge but is not in user.communities
+
+    handleTransferSingle(
+      createTransferSingleEvent(
+        holder,
+        Address.fromString(ZERO_ADDRESS),
+        BigInt.fromI32(502),
+        BigInt.fromI32(1),
+      ),
+    );
+
+    assert.entityCount("BadgeBurnedActivity", 1);
+    assert.entityCount("MemberLeftActivity", 0);
+
+    log.success(
+      "BadgeBurnedActivity created for non-manager community badge burn without member leave",
+      [],
+    );
   });
 });
 

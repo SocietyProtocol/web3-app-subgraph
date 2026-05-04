@@ -116,57 +116,49 @@ export function burn(
 
     if (badge.community != null) {
       const community = Community.load(badge.community!);
-      if (community != null && badge.id != community.managerBadge) {
-        // Member badge burned → user leaves community
-        const communityIndex = user.communities.indexOf(community.id);
-        if (communityIndex >= 0) {
-          const updatedCommunities = user.communities;
-          updatedCommunities.splice(communityIndex, 1);
-          user.communities = updatedCommunities;
-          user.save();
-          community.memberCount = community.memberCount.minus(
-            BigInt.fromI32(1),
-          );
-          community.save();
+      if (community != null) {
+        const burnActivityId = txHash.toHex() + "-" + logKey + "-burn";
+        const burnActivity = new BadgeBurnedActivity(burnActivityId);
+        burnActivity.community = community.id;
+        burnActivity.timestamp = blockTimestamp;
+        burnActivity.blockNumber = blockNumber;
+        burnActivity.txHash = txHash;
+        burnActivity.badge = badge.id;
+        burnActivity.user = user.id;
+        burnActivity.save();
 
-          const burnActivityId = txHash.toHex() + "-" + logKey + "-burn";
-          const burnActivity = new BadgeBurnedActivity(burnActivityId);
-          burnActivity.community = community.id;
-          burnActivity.timestamp = blockTimestamp;
-          burnActivity.blockNumber = blockNumber;
-          burnActivity.txHash = txHash;
-          burnActivity.badge = badge.id;
-          burnActivity.user = user.id;
-          burnActivity.save();
+        if (badge.id != community.managerBadge) {
+          // Non-manager community badge burned → user may leave community
+          const communityIndex = user.communities.indexOf(community.id);
+          if (communityIndex >= 0) {
+            const updatedCommunities = user.communities;
+            updatedCommunities.splice(communityIndex, 1);
+            user.communities = updatedCommunities;
+            user.save();
+            community.memberCount = community.memberCount.minus(
+              BigInt.fromI32(1),
+            );
+            community.save();
 
-          const activityId = txHash.toHex() + "-" + logKey;
-          const activity = new MemberLeftActivity(activityId);
-          activity.community = community.id;
-          activity.timestamp = blockTimestamp.plus(BigInt.fromI32(1));
-          activity.blockNumber = blockNumber;
-          activity.txHash = txHash;
-          activity.badge = badge.id;
-          activity.user = user.id;
-          activity.save();
+            const activityId = txHash.toHex() + "-" + logKey;
+            const activity = new MemberLeftActivity(activityId);
+            activity.community = community.id;
+            activity.timestamp = blockTimestamp.plus(BigInt.fromI32(1));
+            activity.blockNumber = blockNumber;
+            activity.txHash = txHash;
+            activity.badge = badge.id;
+            activity.user = user.id;
+            activity.save();
 
-          const joinActivityId = user.id + "-" + community.id + "-member-join";
-          const joinActivity = MemberJoinedActivity.load(joinActivityId);
-          if (joinActivity != null) {
-            joinActivity.leftAt = activity.timestamp;
-            joinActivity.save();
+            const joinActivityId =
+              user.id + "-" + community.id + "-member-join";
+            const joinActivity = MemberJoinedActivity.load(joinActivityId);
+            if (joinActivity != null) {
+              joinActivity.leftAt = activity.timestamp;
+              joinActivity.save();
+            }
           }
         }
-      } else if (community != null) {
-        // Manager badge or other community badge burned
-        const activityId = txHash.toHex() + "-" + logKey + "-burn";
-        const activity = new BadgeBurnedActivity(activityId);
-        activity.community = community.id;
-        activity.timestamp = blockTimestamp;
-        activity.blockNumber = blockNumber;
-        activity.txHash = txHash;
-        activity.badge = badge.id;
-        activity.user = user.id;
-        activity.save();
       }
     }
   }
@@ -254,7 +246,7 @@ export function transfer(
         community.save();
       }
 
-      if (!toUser.communities.includes(community.id)) {
+      if (!alreadyHasBadge && !toUser.communities.includes(community.id)) {
         const toCommunities = toUser.communities;
         toCommunities.push(community.id);
         toUser.communities = toCommunities;

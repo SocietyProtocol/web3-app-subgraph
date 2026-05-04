@@ -186,7 +186,7 @@ export function handleCommunityCreated(event: CommunityCreated): void {
   // TransferSingle for the initial badge mints fires before CommunityCreated,
   // so badge.community is null at that point and mint() cannot create activities.
   // Emit them here instead.
-  // Timestamps are offset by 1 each so that a timestamp-desc query returns
+  // Timestamps are offset by 1 each so that a timestamp-asc query returns
   // them in the correct logical order: CommunityCreated → manager mint →
   // member mint → MemberJoined.
   const managerMintActivity = new BadgeMintedActivity(baseId + "-manager-mint");
