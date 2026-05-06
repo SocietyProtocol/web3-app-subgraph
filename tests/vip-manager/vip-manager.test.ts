@@ -33,7 +33,6 @@ import {
   createCommunityTierRevokedEvent,
   createTokensLockedEvent,
   createTokensUnlockedEvent,
-  mockTierBadgeIds,
 } from "./utils";
 
 // Helper: create and store a minimal Community entity in the mock store.
@@ -280,7 +279,6 @@ describe("VipManager — handleCommunityTierGranted", () => {
 
   test("sets tierId, tierName, and tierExpiresAt on the Community", () => {
     createAndSaveCommunity("1");
-    mockTierBadgeIds(bronzeBadgeId, silverBadgeId, goldBadgeId);
 
     const expiry = BigInt.fromI32(1900000000);
     handleCommunityTierGranted(
@@ -301,7 +299,6 @@ describe("VipManager — handleCommunityTierGranted", () => {
 
   test("maps bronzeBadgeId to bronze", () => {
     createAndSaveCommunity("2");
-    mockTierBadgeIds(bronzeBadgeId, silverBadgeId, goldBadgeId);
 
     handleCommunityTierGranted(
       createCommunityTierGrantedEvent(
@@ -320,7 +317,6 @@ describe("VipManager — handleCommunityTierGranted", () => {
 
   test("maps silverBadgeId to silver", () => {
     createAndSaveCommunity("3");
-    mockTierBadgeIds(bronzeBadgeId, silverBadgeId, goldBadgeId);
 
     handleCommunityTierGranted(
       createCommunityTierGrantedEvent(
@@ -339,7 +335,6 @@ describe("VipManager — handleCommunityTierGranted", () => {
 
   test("unknown tierId falls back to unaffiliated", () => {
     createAndSaveCommunity("4");
-    mockTierBadgeIds(bronzeBadgeId, silverBadgeId, goldBadgeId);
 
     const unknownId = BigInt.fromI32(99);
     handleCommunityTierGranted(
@@ -358,7 +353,6 @@ describe("VipManager — handleCommunityTierGranted", () => {
   });
 
   test("does nothing when Community does not exist", () => {
-    mockTierBadgeIds(bronzeBadgeId, silverBadgeId, goldBadgeId);
     handleCommunityTierGranted(
       createCommunityTierGrantedEvent(
         BigInt.fromI32(999),
@@ -386,7 +380,6 @@ describe("VipManager — handleCommunityTierRevoked", () => {
     createAndSaveCommunity("10");
 
     // First grant a tier
-    mockTierBadgeIds(bronzeBadgeId, silverBadgeId, goldBadgeId);
     handleCommunityTierGranted(
       createCommunityTierGrantedEvent(
         BigInt.fromI32(10),
@@ -433,7 +426,6 @@ describe("VipManager — CommunityTierGrantedActivity", () => {
 
   test("Should create one CommunityTierGrantedActivity when tier is granted", () => {
     createAndSaveCommunity("20");
-    mockTierBadgeIds(bronzeBadgeId, silverBadgeId, goldBadgeId);
 
     handleCommunityTierGranted(
       createCommunityTierGrantedEvent(
@@ -451,7 +443,6 @@ describe("VipManager — CommunityTierGrantedActivity", () => {
 
   test("Activity tierId, tierName, tierExpiresAt match the granted tier", () => {
     createAndSaveCommunity("21");
-    mockTierBadgeIds(bronzeBadgeId, silverBadgeId, goldBadgeId);
 
     const expiry = BigInt.fromI32(1900000001);
     handleCommunityTierGranted(
@@ -477,7 +468,6 @@ describe("VipManager — CommunityTierGrantedActivity", () => {
   test("Multiple grants create multiple activities", () => {
     createAndSaveCommunity("22");
     createAndSaveCommunity("23");
-    mockTierBadgeIds(bronzeBadgeId, silverBadgeId, goldBadgeId);
 
     handleCommunityTierGranted(
       createCommunityTierGrantedEvent(
@@ -502,8 +492,6 @@ describe("VipManager — CommunityTierGrantedActivity", () => {
   });
 
   test("Should NOT create activity when Community does not exist", () => {
-    mockTierBadgeIds(bronzeBadgeId, silverBadgeId, goldBadgeId);
-
     handleCommunityTierGranted(
       createCommunityTierGrantedEvent(
         BigInt.fromI32(999),
@@ -526,7 +514,6 @@ describe("VipManager — CommunityTierRevokedActivity", () => {
 
   test("Should create one CommunityTierRevokedActivity when tier is revoked", () => {
     createAndSaveCommunity("30");
-    mockTierBadgeIds(bronzeBadgeId, silverBadgeId, goldBadgeId);
 
     handleCommunityTierGranted(
       createCommunityTierGrantedEvent(
@@ -547,7 +534,6 @@ describe("VipManager — CommunityTierRevokedActivity", () => {
 
   test("Activity previousTierId and previousTierName capture the tier before revocation", () => {
     createAndSaveCommunity("31");
-    mockTierBadgeIds(bronzeBadgeId, silverBadgeId, goldBadgeId);
 
     handleCommunityTierGranted(
       createCommunityTierGrantedEvent(
@@ -590,7 +576,6 @@ describe("VipManager — CommunityTierRevokedActivity", () => {
 
   test("Community tier fields reset to defaults after revocation", () => {
     createAndSaveCommunity("32");
-    mockTierBadgeIds(bronzeBadgeId, silverBadgeId, goldBadgeId);
 
     handleCommunityTierGranted(
       createCommunityTierGrantedEvent(

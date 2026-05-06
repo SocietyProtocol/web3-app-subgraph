@@ -1,9 +1,8 @@
-import { Address, BigInt } from "@graphprotocol/graph-ts";
+import { BigInt } from "@graphprotocol/graph-ts";
 import { generateActivityId } from "./utils/community-membership";
 import {
   CommunityTierGranted,
   CommunityTierRevoked,
-  SocietyVipManager,
   TokensLocked,
   TokensUnlocked,
 } from "../generated/SocietyVipManager/SocietyVipManager";
@@ -15,20 +14,10 @@ import {
 } from "../generated/schema";
 import { findOrCreateUser } from "./user";
 
-function tierIdToName(tierId: BigInt, contractAddress: Address): string {
-  const contract = SocietyVipManager.bind(contractAddress);
-
-  const bronzeResult = contract.try_bronzeBadgeId();
-  if (!bronzeResult.reverted && tierId.equals(bronzeResult.value))
-    return "bronze";
-
-  const silverResult = contract.try_silverBadgeId();
-  if (!silverResult.reverted && tierId.equals(silverResult.value))
-    return "silver";
-
-  const goldResult = contract.try_goldBadgeId();
-  if (!goldResult.reverted && tierId.equals(goldResult.value)) return "gold";
-
+function tierIdToName(tierId: BigInt): string {
+  if (tierId.equals(BigInt.fromI32(1))) return "bronze";
+  if (tierId.equals(BigInt.fromI32(2))) return "silver";
+  if (tierId.equals(BigInt.fromI32(3))) return "gold";
   return "unaffiliated";
 }
 
@@ -37,7 +26,7 @@ export function handleCommunityTierGranted(event: CommunityTierGranted): void {
   const community = Community.load(communityId);
   if (community == null) return;
 
-  const tierName = tierIdToName(event.params.tierId, event.address);
+  const tierName = tierIdToName(event.params.tierId);
   community.tierId = event.params.tierId;
   community.tierName = tierName;
   community.tierExpiresAt = event.params.expiry;
