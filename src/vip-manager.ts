@@ -14,10 +14,14 @@ import {
 } from "../generated/schema";
 import { findOrCreateUser } from "./user";
 
+const TIER_ID_BRONZE = BigInt.fromI32(1);
+const TIER_ID_SILVER = BigInt.fromI32(2);
+const TIER_ID_GOLD = BigInt.fromI32(3);
+
 function tierIdToName(tierId: BigInt): string {
-  if (tierId.equals(BigInt.fromI32(1))) return "bronze";
-  if (tierId.equals(BigInt.fromI32(2))) return "silver";
-  if (tierId.equals(BigInt.fromI32(3))) return "gold";
+  if (tierId.equals(TIER_ID_BRONZE)) return "bronze";
+  if (tierId.equals(TIER_ID_SILVER)) return "silver";
+  if (tierId.equals(TIER_ID_GOLD)) return "gold";
   return "unaffiliated";
 }
 
