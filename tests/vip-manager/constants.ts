@@ -17,7 +17,7 @@ export const lockTimestamp: i32 = 1683094249;
 export const unlockTime1 = BigInt.fromI32(1683094249 + 90 * 24 * 3600);
 export const unlockTime2 = BigInt.fromI32(1683094249 + 180 * 24 * 3600);
 
-// Badge IDs as configured in the contract (used by tierIdToName)
-export const bronzeBadgeId = BigInt.fromI32(10);
-export const silverBadgeId = BigInt.fromI32(20);
-export const goldBadgeId = BigInt.fromI32(30);
+// Badge IDs as used by the hardcoded tierIdToName mapping (1→bronze, 2→silver, 3→gold)
+export const bronzeBadgeId = BigInt.fromI32(1);
+export const silverBadgeId = BigInt.fromI32(2);
+export const goldBadgeId = BigInt.fromI32(3);

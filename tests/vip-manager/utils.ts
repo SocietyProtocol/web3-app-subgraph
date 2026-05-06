@@ -1,8 +1,5 @@
 import { Address, BigInt, Bytes, ethereum } from "@graphprotocol/graph-ts";
-import {
-  createMockedFunction,
-  newMockEventWithParams,
-} from "matchstick-as/assembly/index";
+import { newMockEventWithParams } from "matchstick-as/assembly/index";
 
 import {
   CommunityTierGranted,
@@ -13,40 +10,6 @@ import {
 import { vipManagerContractAddress } from "./constants";
 
 export const contractAddress = Address.fromString(vipManagerContractAddress);
-
-/**
- * Mock the three badge-ID view functions on the VipManager contract so that
- * tierIdToName can resolve names from the on-chain constants.
- */
-export function mockTierBadgeIds(
-  bronzeId: BigInt,
-  silverId: BigInt,
-  goldId: BigInt,
-): void {
-  createMockedFunction(
-    contractAddress,
-    "bronzeBadgeId",
-    "bronzeBadgeId():(uint256)",
-  )
-    .withArgs([])
-    .returns([ethereum.Value.fromUnsignedBigInt(bronzeId)]);
-
-  createMockedFunction(
-    contractAddress,
-    "silverBadgeId",
-    "silverBadgeId():(uint256)",
-  )
-    .withArgs([])
-    .returns([ethereum.Value.fromUnsignedBigInt(silverId)]);
-
-  createMockedFunction(
-    contractAddress,
-    "goldBadgeId",
-    "goldBadgeId():(uint256)",
-  )
-    .withArgs([])
-    .returns([ethereum.Value.fromUnsignedBigInt(goldId)]);
-}
 
 // newMockEventWithParams always returns the same hardcoded transaction hash.
 // Encode blockTimestamp into the last 4 bytes of a 32-byte hash so that
