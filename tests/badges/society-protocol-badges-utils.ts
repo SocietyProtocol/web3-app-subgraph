@@ -12,6 +12,7 @@ import {
   TransferBatch,
   TransferSingle,
   URI,
+  UserInvited,
 } from "../../generated/SocietyProtocolBadges/SocietyProtocolBadges";
 
 export const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
@@ -229,4 +230,25 @@ export function createBadgeModifiedEvent(
   badgeModifiedEvent.address = societyProtocolBadgesContractAddress;
 
   return badgeModifiedEvent;
+}
+
+export function createUserInvitedEvent(
+  inviter: Address,
+  invitee: Address,
+  nonce: BigInt = BigInt.fromI32(1),
+): UserInvited {
+  let event = changetype<UserInvited>(
+    newMockEventWithParams([
+      new ethereum.EventParam("inviter", ethereum.Value.fromAddress(inviter)),
+      new ethereum.EventParam("invitee", ethereum.Value.fromAddress(invitee)),
+      new ethereum.EventParam(
+        "nonce",
+        ethereum.Value.fromUnsignedBigInt(nonce),
+      ),
+    ]),
+  );
+
+  event.address = societyProtocolBadgesContractAddress;
+
+  return event;
 }

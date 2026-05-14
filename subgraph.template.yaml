@@ -48,6 +48,8 @@ dataSources:
           handler: handleEditorsUpdated
         - event: BadgePermissions(indexed uint256,uint256[],uint256[],uint256[],address[])
           handler: handleBadgePermissions
+        - event: UserInvited(indexed address,indexed address,uint256)
+          handler: handleUserInvited
       file: ./src/society-protocol-badges.ts
   - kind: ethereum
     name: EasyAuction

@@ -5,6 +5,8 @@ type User @entity(immutable: false) {
   imageUrl: String
   profile: Badge
   badges: [Badge!]!
+  invitedBy: User
+  invitedUsers: [User!]! @derivedFrom(field: "invitedBy")
   managedBadges: [Badge!]!
   managedCommunities: [Community!]!
   communities: [Community!]!

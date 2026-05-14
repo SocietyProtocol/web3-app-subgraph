@@ -11,6 +11,7 @@ import {
   TransferBatch,
   TransferSingle,
   URI,
+  UserInvited,
 } from "../generated/SocietyProtocolBadges/SocietyProtocolBadges";
 import { findOrCreateUser } from "./user";
 import { fetchIpfsMetadata, getStringFromTypedMap } from "./utils/metadata";
@@ -320,4 +321,20 @@ export function handleBadgePermissions(event: BadgePermissions): void {
   // Editor permissions are managed through the EditorsUpdated event handler.
 
   badge.save();
+}
+
+export function handleUserInvited(event: UserInvited): void {
+  const inviterAddress = event.params.inviter.toHexString();
+  const inviteeAddress = event.params.invitee.toHexString();
+
+  log.info("Handling UserInvited: inviter={}, invitee={}", [
+    inviterAddress,
+    inviteeAddress,
+  ]);
+
+  findOrCreateUser(inviterAddress);
+
+  const invitee = findOrCreateUser(inviteeAddress);
+  invitee.invitedBy = inviterAddress;
+  invitee.save();
 }
