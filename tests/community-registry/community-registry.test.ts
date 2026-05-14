@@ -16,6 +16,7 @@ import {
 import {
   createCommunityBadgeCreatedEvent,
   createCommunityCreatedEvent,
+  createCommunityCreatedEventWithRevertedDetails,
   createCommunityDetailsUpdatedEvent,
   DEFAULT_CREATOR_ADDRESS,
 } from "./community-registry-utils";
@@ -110,6 +111,7 @@ describe("CommunityRegistry Mappings", () => {
         createCommunityCreatedEvent(
           BigInt.fromI32(5),
           Address.fromString(DEFAULT_CREATOR_ADDRESS),
+          BigInt.fromI32(50),
           BigInt.fromI32(6),
         ),
       );
@@ -138,6 +140,7 @@ describe("CommunityRegistry Mappings", () => {
         createCommunityCreatedEvent(
           BigInt.fromI32(8),
           Address.fromString(DEFAULT_CREATOR_ADDRESS),
+          BigInt.fromI32(80),
           BigInt.fromI32(9),
         ),
       );
@@ -160,18 +163,21 @@ describe("CommunityRegistry Mappings", () => {
     test("Should create Community entity with manager and member badge", () => {
       // communityId=10, so managerBadge=10 (same sequential ID by contract design)
       createAndSaveBadge("10", true);
-      createAndSaveBadge("11", false);
+      createAndSaveBadge("11", false); // assistantBadge
+      createAndSaveBadge("12", false); // memberBadge
 
       const creatorAddress = Address.fromString(DEFAULT_CREATOR_ADDRESS);
       handleCommunityCreated(
         createCommunityCreatedEvent(
           BigInt.fromI32(10),
           creatorAddress,
+          BigInt.fromI32(12),
           BigInt.fromI32(11),
         ),
       );
 
       assert.fieldEquals("Community", "10", "managerBadge", "10");
+      assert.fieldEquals("Community", "10", "assistantBadge", "12");
       assert.fieldEquals("Community", "10", "memberBadge", "11");
       assert.fieldEquals(
         "Community",
@@ -183,7 +189,7 @@ describe("CommunityRegistry Mappings", () => {
       assert.fieldEquals("Community", "10", "tierId", "0");
       assert.fieldEquals("Community", "10", "tierName", "unaffiliated");
       assert.fieldEquals("Community", "10", "tierExpiresAt", "0");
-      assert.fieldEquals("Community", "10", "badgeCount", "2");
+      assert.fieldEquals("Community", "10", "badgeCount", "3");
 
       log.success(
         "Community entity created with correct manager and member badge on CommunityCreated",
@@ -200,6 +206,7 @@ describe("CommunityRegistry Mappings", () => {
         createCommunityCreatedEvent(
           BigInt.fromI32(20),
           creatorAddress,
+          BigInt.fromI32(22),
           BigInt.fromI32(21),
         ),
       );
@@ -217,37 +224,47 @@ describe("CommunityRegistry Mappings", () => {
 
     test("Should link member badge to community", () => {
       createAndSaveBadge("30", true);
-      createAndSaveBadge("31", false);
+      createAndSaveBadge("31", false); // assistantBadge
+      createAndSaveBadge("32", false); // memberBadge
 
       handleCommunityCreated(
         createCommunityCreatedEvent(
           BigInt.fromI32(30),
           Address.fromString(DEFAULT_CREATOR_ADDRESS),
+          BigInt.fromI32(32),
           BigInt.fromI32(31),
         ),
       );
 
+      assert.fieldEquals("Badge", "32", "community", "30");
       assert.fieldEquals("Badge", "31", "community", "30");
 
-      log.success("Member badge linked to community on CommunityCreated", []);
+      log.success(
+        "Assistant and member badges linked to community on CommunityCreated",
+        [],
+      );
     });
 
     test("Should use communityId as managerBadgeId (contract design: same sequential ID)", () => {
       createAndSaveBadge("99", true); // manager badge id = communityId = 99
-      createAndSaveBadge("30", false);
+      createAndSaveBadge("100", false); // assistantBadge
+      createAndSaveBadge("101", false); // memberBadge
 
       handleCommunityCreated(
         createCommunityCreatedEvent(
           BigInt.fromI32(99),
           Address.fromString(DEFAULT_CREATOR_ADDRESS),
-          BigInt.fromI32(30),
+          BigInt.fromI32(100),
+          BigInt.fromI32(101),
         ),
       );
 
       assert.fieldEquals("Community", "99", "managerBadge", "99");
-      assert.fieldEquals("Community", "99", "memberBadge", "30");
+      assert.fieldEquals("Community", "99", "assistantBadge", "100");
+      assert.fieldEquals("Community", "99", "memberBadge", "101");
       assert.fieldEquals("Badge", "99", "community", "99");
-      assert.fieldEquals("Badge", "30", "community", "99");
+      assert.fieldEquals("Badge", "100", "community", "99");
+      assert.fieldEquals("Badge", "101", "community", "99");
 
       log.success("communityId used as managerBadgeId (contract design)", []);
     });
@@ -255,21 +272,49 @@ describe("CommunityRegistry Mappings", () => {
     test("Should not crash and still create Community when member Badge entity is absent", () => {
       createAndSaveBadge("40", true);
 
-      // member badge entity absent from store — communityId=40 → managerBadge=40
+      // assistant badge (42) and member badge (41) both absent from store
       handleCommunityCreated(
         createCommunityCreatedEvent(
           BigInt.fromI32(40),
           Address.fromString(DEFAULT_CREATOR_ADDRESS),
+          BigInt.fromI32(42),
           BigInt.fromI32(41),
         ),
       );
 
       assert.fieldEquals("Community", "40", "managerBadge", "40");
+      assert.fieldEquals("Community", "40", "assistantBadge", "42");
       assert.fieldEquals("Community", "40", "memberBadge", "41");
       assert.fieldEquals("Community", "40", "badgeCount", "1");
 
       log.success(
         "Community created even when member Badge entity is absent",
+        [],
+      );
+    });
+
+    test("Should not crash and still create Community when assistant Badge entity is absent", () => {
+      createAndSaveBadge("43", true); // managerBadge = communityId = 43
+      createAndSaveBadge("45", false); // memberBadge present
+      // assistantBadge (44) intentionally absent from store
+
+      handleCommunityCreated(
+        createCommunityCreatedEvent(
+          BigInt.fromI32(43),
+          Address.fromString(DEFAULT_CREATOR_ADDRESS),
+          BigInt.fromI32(44),
+          BigInt.fromI32(45),
+        ),
+      );
+
+      assert.fieldEquals("Community", "43", "managerBadge", "43");
+      assert.fieldEquals("Community", "43", "assistantBadge", "44");
+      assert.fieldEquals("Community", "43", "memberBadge", "45");
+      // Only managerBadge + memberBadge counted (assistantBadge absent → not counted)
+      assert.fieldEquals("Community", "43", "badgeCount", "2");
+
+      log.success(
+        "Community created even when assistant Badge entity is absent",
         [],
       );
     });
@@ -282,6 +327,7 @@ describe("CommunityRegistry Mappings", () => {
         createCommunityCreatedEvent(
           BigInt.fromI32(70),
           Address.fromString(DEFAULT_CREATOR_ADDRESS),
+          BigInt.fromI32(72),
           BigInt.fromI32(71),
         ),
       );
@@ -304,6 +350,7 @@ describe("CommunityRegistry Mappings", () => {
         createCommunityCreatedEvent(
           BigInt.fromI32(80),
           Address.fromString(DEFAULT_CREATOR_ADDRESS),
+          BigInt.fromI32(82),
           BigInt.fromI32(81),
         ),
       );
@@ -318,25 +365,85 @@ describe("CommunityRegistry Mappings", () => {
       );
     });
 
-    test("Should set name and description from getCommunityDetails", () => {
+    test("Should set all community details from getCommunityDetails", () => {
       createAndSaveBadge("90", true);
-      createAndSaveBadge("91", false);
+      createAndSaveBadge("92", false); // assistantBadge returned by contract
+      createAndSaveBadge("91", false); // memberBadge returned by contract
 
       handleCommunityCreated(
         createCommunityCreatedEvent(
           BigInt.fromI32(90),
           Address.fromString(DEFAULT_CREATOR_ADDRESS),
+          BigInt.fromI32(92),
           BigInt.fromI32(91),
           "My Community",
           "A great community",
+          BigInt.fromI32(1683094249),
         ),
       );
 
       assert.fieldEquals("Community", "90", "name", "My Community");
       assert.fieldEquals("Community", "90", "description", "A great community");
+      assert.fieldEquals("Community", "90", "assistantBadge", "92");
+      assert.fieldEquals("Community", "90", "memberBadge", "91");
+      assert.fieldEquals("Community", "90", "createdAt", "1683094249");
 
       log.success(
-        "name and description set from getCommunityDetails contract call",
+        "name, description, badge IDs and createdAt set from getCommunityDetails",
+        [],
+      );
+    });
+
+    test("Should prefer getCommunityDetails badge IDs over event params", () => {
+      // Event params carry badgeId=997/998, but the contract returns 992/991.
+      // The mapping must use the contract values.
+      createAndSaveBadge("93", true); // managerBadge = communityId = 93
+      createAndSaveBadge("992", false); // assistantBadge from contract
+      createAndSaveBadge("991", false); // memberBadge from contract
+
+      handleCommunityCreated(
+        createCommunityCreatedEvent(
+          BigInt.fromI32(93),
+          Address.fromString(DEFAULT_CREATOR_ADDRESS),
+          BigInt.fromI32(992), // contract mock value
+          BigInt.fromI32(991), // contract mock value
+          "",
+          "",
+        ),
+      );
+
+      assert.fieldEquals("Community", "93", "assistantBadge", "992");
+      assert.fieldEquals("Community", "93", "memberBadge", "991");
+      assert.fieldEquals("Badge", "992", "community", "93");
+      assert.fieldEquals("Badge", "991", "community", "93");
+
+      log.success(
+        "getCommunityDetails badge IDs take precedence over event params",
+        [],
+      );
+    });
+
+    test("Should fall back to event params when getCommunityDetails reverts", () => {
+      createAndSaveBadge("94", true);
+      createAndSaveBadge("95", false); // assistantBadge (event param)
+      createAndSaveBadge("96", false); // memberBadge (event param)
+
+      handleCommunityCreated(
+        createCommunityCreatedEventWithRevertedDetails(
+          BigInt.fromI32(94),
+          Address.fromString(DEFAULT_CREATOR_ADDRESS),
+          BigInt.fromI32(95),
+          BigInt.fromI32(96),
+        ),
+      );
+
+      assert.fieldEquals("Community", "94", "assistantBadge", "95");
+      assert.fieldEquals("Community", "94", "memberBadge", "96");
+      assert.fieldEquals("Badge", "95", "community", "94");
+      assert.fieldEquals("Badge", "96", "community", "94");
+
+      log.success(
+        "event param badge IDs used as fallback when getCommunityDetails reverts",
         [],
       );
     });
@@ -351,6 +458,7 @@ describe("CommunityRegistry Mappings", () => {
         createCommunityCreatedEvent(
           BigInt.fromI32(50),
           Address.fromString(DEFAULT_CREATOR_ADDRESS),
+          BigInt.fromI32(52),
           BigInt.fromI32(51),
         ),
       );
@@ -402,6 +510,7 @@ describe("CommunityRegistry Mappings", () => {
         createCommunityCreatedEvent(
           BigInt.fromI32(60),
           Address.fromString(DEFAULT_CREATOR_ADDRESS),
+          BigInt.fromI32(62),
           BigInt.fromI32(61),
         ),
       );
@@ -440,6 +549,7 @@ describe("CommunityRegistry Mappings", () => {
         createCommunityCreatedEvent(
           BigInt.fromI32(100),
           creatorAddress,
+          BigInt.fromI32(102),
           BigInt.fromI32(101),
         ),
       );
@@ -459,6 +569,7 @@ describe("CommunityRegistry Mappings", () => {
       );
 
       assert.fieldEquals("Community", "100", "managerBadge", "100");
+      assert.fieldEquals("Community", "100", "assistantBadge", "102");
       assert.fieldEquals("Community", "100", "memberBadge", "101");
       assert.fieldEquals("Community", "100", "name", "Final Name");
       assert.fieldEquals("Community", "100", "description", "Great community");

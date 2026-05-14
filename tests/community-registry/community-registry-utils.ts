@@ -39,16 +39,17 @@ export function createCommunityBadgeCreatedEvent(
 export function createCommunityCreatedEvent(
   communityId: BigInt,
   creator: Address,
+  assistantBadgeId: BigInt,
   memberBadgeId: BigInt,
   name: string = "",
   description: string = "",
+  createdAt: BigInt = BigInt.fromI32(0),
 ): CommunityCreated {
-  // Mock the getCommunityDetails view call so handleCommunityCreated can read
-  // name and description at index time.
+  // Mock the getCommunityDetails view call — authoritative source for all community details.
   createMockedFunction(
     COMMUNITY_REGISTRY_ADDRESS,
     "getCommunityDetails",
-    "getCommunityDetails(uint256):((string,string,uint256,address,uint256))",
+    "getCommunityDetails(uint256):((string,string,uint256,uint256,address,uint256))",
   )
     .withArgs([ethereum.Value.fromUnsignedBigInt(communityId)])
     .returns([
@@ -56,9 +57,10 @@ export function createCommunityCreatedEvent(
         changetype<ethereum.Tuple>([
           ethereum.Value.fromString(name),
           ethereum.Value.fromString(description),
+          ethereum.Value.fromUnsignedBigInt(assistantBadgeId),
           ethereum.Value.fromUnsignedBigInt(memberBadgeId),
           ethereum.Value.fromAddress(Address.zero()),
-          ethereum.Value.fromUnsignedBigInt(BigInt.fromI32(0)),
+          ethereum.Value.fromUnsignedBigInt(createdAt),
         ]),
       ),
     ]);
@@ -70,6 +72,49 @@ export function createCommunityCreatedEvent(
         ethereum.Value.fromUnsignedBigInt(communityId),
       ),
       new ethereum.EventParam("creator", ethereum.Value.fromAddress(creator)),
+      new ethereum.EventParam(
+        "assistantBadgeId",
+        ethereum.Value.fromUnsignedBigInt(assistantBadgeId),
+      ),
+      new ethereum.EventParam(
+        "memberBadgeId",
+        ethereum.Value.fromUnsignedBigInt(memberBadgeId),
+      ),
+    ]),
+  );
+  event.address = COMMUNITY_REGISTRY_ADDRESS;
+  return event;
+}
+
+/**
+ * Creates a CommunityCreated event whose getCommunityDetails call is mocked to
+ * revert, so tests can verify the event-param fallback values are used.
+ */
+export function createCommunityCreatedEventWithRevertedDetails(
+  communityId: BigInt,
+  creator: Address,
+  assistantBadgeId: BigInt,
+  memberBadgeId: BigInt,
+): CommunityCreated {
+  createMockedFunction(
+    COMMUNITY_REGISTRY_ADDRESS,
+    "getCommunityDetails",
+    "getCommunityDetails(uint256):((string,string,uint256,uint256,address,uint256))",
+  )
+    .withArgs([ethereum.Value.fromUnsignedBigInt(communityId)])
+    .reverts();
+
+  const event = changetype<CommunityCreated>(
+    newMockEventWithParams([
+      new ethereum.EventParam(
+        "communityId",
+        ethereum.Value.fromUnsignedBigInt(communityId),
+      ),
+      new ethereum.EventParam("creator", ethereum.Value.fromAddress(creator)),
+      new ethereum.EventParam(
+        "assistantBadgeId",
+        ethereum.Value.fromUnsignedBigInt(assistantBadgeId),
+      ),
       new ethereum.EventParam(
         "memberBadgeId",
         ethereum.Value.fromUnsignedBigInt(memberBadgeId),

@@ -45,6 +45,7 @@ type Community @entity(immutable: false) {
   managerAddress: String!
   manager: User!
   managerBadge: Badge!
+  assistantBadge: Badge
   memberBadge: Badge
   memberCount: BigInt!
   badgeCount: BigInt!

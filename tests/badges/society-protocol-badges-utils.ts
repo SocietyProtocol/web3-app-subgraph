@@ -50,7 +50,7 @@ export function createBadgeCreatedEvent(
         ethereum.Value.fromBoolean(isOfficial),
       ),
       new ethereum.EventParam(
-        "isCommunity",
+        "isCommunityBadge",
         ethereum.Value.fromBoolean(isCommunity),
       ),
       new ethereum.EventParam("creator", ethereum.Value.fromAddress(creator)),
@@ -216,7 +216,7 @@ export function createBadgeModifiedEvent(
         ethereum.Value.fromBoolean(isOfficial),
       ),
       new ethereum.EventParam(
-        "isCommunity",
+        "isCommunityBadge",
         ethereum.Value.fromBoolean(isCommunity),
       ),
       new ethereum.EventParam(

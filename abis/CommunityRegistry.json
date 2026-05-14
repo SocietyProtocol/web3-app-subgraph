@@ -7,6 +7,7 @@
     "name": "AddressEmptyCode",
     "type": "error"
   },
+  { "inputs": [], "name": "BadgeNotInCommunity", "type": "error" },
   { "inputs": [], "name": "CommunityDoesNotExist", "type": "error" },
   {
     "inputs": [
@@ -77,6 +78,12 @@
         "internalType": "address",
         "name": "creator",
         "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "assistantBadgeId",
+        "type": "uint256"
       },
       {
         "indexed": false,
@@ -203,6 +210,11 @@
     "outputs": [
       { "internalType": "string", "name": "name", "type": "string" },
       { "internalType": "string", "name": "description", "type": "string" },
+      {
+        "internalType": "uint256",
+        "name": "assistantBadgeId",
+        "type": "uint256"
+      },
       { "internalType": "uint256", "name": "memberBadgeId", "type": "uint256" },
       { "internalType": "address", "name": "wrapper", "type": "address" },
       { "internalType": "uint256", "name": "createdAt", "type": "uint256" }
@@ -221,7 +233,12 @@
     "inputs": [
       { "internalType": "string", "name": "name", "type": "string" },
       { "internalType": "string", "name": "description", "type": "string" },
-      { "internalType": "string", "name": "creatorBadgeURI", "type": "string" },
+      { "internalType": "string", "name": "managerBadgeURI", "type": "string" },
+      {
+        "internalType": "string",
+        "name": "assistantBadgeURI",
+        "type": "string"
+      },
       { "internalType": "string", "name": "memberBadgeURI", "type": "string" }
     ],
     "name": "createCommunity",
@@ -287,6 +304,11 @@
           { "internalType": "string", "name": "description", "type": "string" },
           {
             "internalType": "uint256",
+            "name": "assistantBadgeId",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
             "name": "memberBadgeId",
             "type": "uint256"
           },
@@ -321,9 +343,21 @@
       { "internalType": "uint256", "name": "communityId", "type": "uint256" },
       { "internalType": "address", "name": "account", "type": "address" }
     ],
-    "name": "isCreator",
+    "name": "isManager",
     "outputs": [{ "internalType": "bool", "name": "", "type": "bool" }],
     "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "uint256", "name": "communityId", "type": "uint256" },
+      { "internalType": "uint256", "name": "badgeId", "type": "uint256" },
+      { "internalType": "string", "name": "name", "type": "string" },
+      { "internalType": "string", "name": "metadataURI", "type": "string" }
+    ],
+    "name": "modifyBadge",
+    "outputs": [],
+    "stateMutability": "nonpayable",
     "type": "function"
   },
   {
@@ -343,6 +377,28 @@
   {
     "inputs": [],
     "name": "renounceOwnership",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "uint256", "name": "communityId", "type": "uint256" },
+      { "internalType": "uint256", "name": "badgeId", "type": "uint256" },
+      { "internalType": "address", "name": "hook", "type": "address" }
+    ],
+    "name": "setBadgeHook",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "uint256", "name": "communityId", "type": "uint256" },
+      { "internalType": "uint256", "name": "badgeId", "type": "uint256" },
+      { "internalType": "string", "name": "uri", "type": "string" }
+    ],
+    "name": "setBadgeURI",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"

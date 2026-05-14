@@ -59,6 +59,8 @@ function createAndSaveCommunity(
   community.manager = managerAddress;
   community.createdAt = BigInt.fromI32(1683094249);
   community.managerBadge = managerBadgeId;
+  community.assistantBadge = managerBadgeId;
+  community.memberBadge = managerBadgeId;
   community.memberCount = BigInt.zero();
   community.badgeCount = BigInt.zero();
   community.tierId = BigInt.zero();
@@ -83,6 +85,7 @@ describe("CommunityCreatedActivity", () => {
       createCommunityCreatedEvent(
         BigInt.fromI32(1),
         Address.fromString(DEFAULT_CREATOR_ADDRESS),
+        BigInt.fromI32(100),
         BigInt.fromI32(2),
       ),
     );
@@ -103,6 +106,7 @@ describe("CommunityCreatedActivity", () => {
       createCommunityCreatedEvent(
         BigInt.fromI32(10),
         Address.fromString(DEFAULT_CREATOR_ADDRESS),
+        BigInt.fromI32(110),
         BigInt.fromI32(11),
       ),
     );
@@ -136,6 +140,7 @@ describe("CommunityDetailsUpdatedActivity", () => {
       createCommunityCreatedEvent(
         BigInt.fromI32(1),
         Address.fromString(DEFAULT_CREATOR_ADDRESS),
+        BigInt.fromI32(100),
         BigInt.fromI32(2),
       ),
     );
@@ -173,6 +178,7 @@ describe("CommunityDetailsUpdatedActivity", () => {
       createCommunityCreatedEvent(
         BigInt.fromI32(20),
         Address.fromString(DEFAULT_CREATOR_ADDRESS),
+        BigInt.fromI32(120),
         BigInt.fromI32(21),
       ),
     );
@@ -209,6 +215,7 @@ describe("CommunityBadgeLinkedActivity", () => {
       createCommunityCreatedEvent(
         BigInt.fromI32(1),
         Address.fromString(DEFAULT_CREATOR_ADDRESS),
+        BigInt.fromI32(100),
         BigInt.fromI32(2),
       ),
     );
@@ -218,7 +225,8 @@ describe("CommunityBadgeLinkedActivity", () => {
       createCommunityBadgeCreatedEvent(BigInt.fromI32(1), BigInt.fromI32(3)),
     );
 
-    assert.entityCount("CommunityBadgeLinkedActivity", 1);
+    // 2 from community creation (manager + member) + 1 from CommunityBadgeCreated
+    assert.entityCount("CommunityBadgeLinkedActivity", 3);
 
     log.success(
       "CommunityBadgeLinkedActivity created when new badge linked",
@@ -234,6 +242,7 @@ describe("CommunityBadgeLinkedActivity", () => {
       createCommunityCreatedEvent(
         BigInt.fromI32(30),
         Address.fromString(DEFAULT_CREATOR_ADDRESS),
+        BigInt.fromI32(130),
         BigInt.fromI32(31),
       ),
     );
@@ -243,7 +252,8 @@ describe("CommunityBadgeLinkedActivity", () => {
       createCommunityBadgeCreatedEvent(BigInt.fromI32(30), BigInt.fromI32(32)),
     );
 
-    assert.entityCount("CommunityBadgeLinkedActivity", 1);
+    // 2 from community creation (manager + member) + 1 from CommunityBadgeCreated
+    assert.entityCount("CommunityBadgeLinkedActivity", 3);
     // Badge 32 was linked — verify it now points to community 30
     assert.fieldEquals("Badge", "32", "community", "30");
 
@@ -258,6 +268,7 @@ describe("CommunityBadgeLinkedActivity", () => {
       createCommunityCreatedEvent(
         BigInt.fromI32(1),
         Address.fromString(DEFAULT_CREATOR_ADDRESS),
+        BigInt.fromI32(100),
         BigInt.fromI32(2),
       ),
     );
@@ -266,7 +277,8 @@ describe("CommunityBadgeLinkedActivity", () => {
       createCommunityBadgeCreatedEvent(BigInt.fromI32(1), BigInt.fromI32(999)),
     );
 
-    assert.entityCount("CommunityBadgeLinkedActivity", 0);
+    // 2 from community creation (manager + member); badge 999 absent → no extra activity
+    assert.entityCount("CommunityBadgeLinkedActivity", 2);
 
     log.success("No activity when badge entity not found", []);
   });
@@ -279,6 +291,7 @@ describe("CommunityBadgeLinkedActivity", () => {
       createCommunityCreatedEvent(
         BigInt.fromI32(40),
         Address.fromString(DEFAULT_CREATOR_ADDRESS),
+        BigInt.fromI32(140),
         BigInt.fromI32(41),
       ),
     );
@@ -288,7 +301,8 @@ describe("CommunityBadgeLinkedActivity", () => {
       createCommunityBadgeCreatedEvent(BigInt.fromI32(40), BigInt.fromI32(41)),
     );
 
-    assert.entityCount("CommunityBadgeLinkedActivity", 0);
+    // 2 from community creation (manager + member); badge 41 already linked → no extra activity
+    assert.entityCount("CommunityBadgeLinkedActivity", 2);
 
     log.success("No activity when badge already linked to community", []);
   });
@@ -301,6 +315,7 @@ describe("CommunityBadgeLinkedActivity", () => {
       createCommunityCreatedEvent(
         BigInt.fromI32(50),
         Address.fromString(DEFAULT_CREATOR_ADDRESS),
+        BigInt.fromI32(150),
         BigInt.fromI32(51),
       ),
     );
@@ -311,10 +326,37 @@ describe("CommunityBadgeLinkedActivity", () => {
     );
 
     assert.fieldEquals("Badge", "52", "community", "50");
-    assert.entityCount("CommunityBadgeLinkedActivity", 1);
+    // 2 from community creation (manager + member) + 1 from CommunityBadgeCreated
+    assert.entityCount("CommunityBadgeLinkedActivity", 3);
 
     log.success(
       "CommunityBadgeLinkedActivity created for each newly linked badge",
+      [],
+    );
+  });
+
+  test("Should create CommunityBadgeLinkedActivity for each badge linked on community creation", () => {
+    createAndSaveBadge("60"); // manager
+    createAndSaveBadge("61"); // member
+    createAndSaveBadge("62"); // assistant
+
+    handleCommunityCreated(
+      createCommunityCreatedEvent(
+        BigInt.fromI32(60),
+        Address.fromString(DEFAULT_CREATOR_ADDRESS),
+        BigInt.fromI32(62),
+        BigInt.fromI32(61),
+      ),
+    );
+
+    // Manager (60), assistant (62), and member (61) all linked → 3 activities
+    assert.entityCount("CommunityBadgeLinkedActivity", 3);
+    assert.fieldEquals("Badge", "60", "community", "60");
+    assert.fieldEquals("Badge", "62", "community", "60");
+    assert.fieldEquals("Badge", "61", "community", "60");
+
+    log.success(
+      "CommunityBadgeLinkedActivity created for all badges linked on community creation",
       [],
     );
   });
@@ -335,6 +377,7 @@ describe("Initial mint activities on CommunityCreated", () => {
       createCommunityCreatedEvent(
         BigInt.fromI32(1),
         Address.fromString(DEFAULT_CREATOR_ADDRESS),
+        BigInt.fromI32(100),
         BigInt.fromI32(2),
       ),
     );
@@ -354,6 +397,7 @@ describe("Initial mint activities on CommunityCreated", () => {
     const event = createCommunityCreatedEvent(
       BigInt.fromI32(10),
       Address.fromString(DEFAULT_CREATOR_ADDRESS),
+      BigInt.fromI32(110),
       BigInt.fromI32(11),
     );
     handleCommunityCreated(event);
@@ -382,6 +426,7 @@ describe("Initial mint activities on CommunityCreated", () => {
     const event = createCommunityCreatedEvent(
       BigInt.fromI32(20),
       Address.fromString(DEFAULT_CREATOR_ADDRESS),
+      BigInt.fromI32(120),
       BigInt.fromI32(21),
     );
     handleCommunityCreated(event);
@@ -411,6 +456,7 @@ describe("Initial mint activities on CommunityCreated", () => {
       createCommunityCreatedEvent(
         BigInt.fromI32(30),
         Address.fromString(DEFAULT_CREATOR_ADDRESS),
+        BigInt.fromI32(130),
         BigInt.fromI32(31),
       ),
     );
@@ -430,6 +476,7 @@ describe("Initial mint activities on CommunityCreated", () => {
     const event = createCommunityCreatedEvent(
       BigInt.fromI32(40),
       Address.fromString(DEFAULT_CREATOR_ADDRESS),
+      BigInt.fromI32(140),
       BigInt.fromI32(41),
     );
     handleCommunityCreated(event);
@@ -461,6 +508,7 @@ describe("Initial mint activities on CommunityCreated", () => {
       createCommunityCreatedEvent(
         BigInt.fromI32(50),
         Address.fromString(DEFAULT_CREATOR_ADDRESS),
+        BigInt.fromI32(150),
         BigInt.fromI32(51),
       ),
     );

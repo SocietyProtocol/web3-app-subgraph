@@ -32,7 +32,7 @@ export function handleBadgeCreated(event: BadgeCreated): void {
   badge.createdBy = createdByUser.id;
   badge.name = event.params.name;
   badge.isOfficial = event.params.isOfficial;
-  badge.isCommunity = event.params.isCommunity;
+  badge.isCommunity = event.params.isCommunityBadge;
   badge.isProfile = false;
   badge.hookAddress = new Bytes(0);
   badge.createdAt = event.block.timestamp;
@@ -77,7 +77,7 @@ export function handleBadgeModified(event: BadgeModified): void {
 
   badge.name = event.params.name;
   badge.isOfficial = event.params.isOfficial;
-  badge.isCommunity = event.params.isCommunity;
+  badge.isCommunity = event.params.isCommunityBadge;
   badge.uri = event.params.metadataURI;
   const metadata = fetchIpfsMetadata(badge.uri);
 
