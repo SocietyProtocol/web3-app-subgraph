@@ -16,6 +16,7 @@ import {
 import {
   createCommunityBadgeCreatedEvent,
   createCommunityCreatedEvent,
+  createCommunityCreatedEventWithContractDetails,
   createCommunityCreatedEventWithRevertedDetails,
   createCommunityDetailsUpdatedEvent,
   DEFAULT_CREATOR_ADDRESS,
@@ -171,14 +172,14 @@ describe("CommunityRegistry Mappings", () => {
         createCommunityCreatedEvent(
           BigInt.fromI32(10),
           creatorAddress,
-          BigInt.fromI32(12),
           BigInt.fromI32(11),
+          BigInt.fromI32(12),
         ),
       );
 
       assert.fieldEquals("Community", "10", "managerBadge", "10");
-      assert.fieldEquals("Community", "10", "assistantBadge", "12");
-      assert.fieldEquals("Community", "10", "memberBadge", "11");
+      assert.fieldEquals("Community", "10", "assistantBadge", "11");
+      assert.fieldEquals("Community", "10", "memberBadge", "12");
       assert.fieldEquals(
         "Community",
         "10",
@@ -395,20 +396,21 @@ describe("CommunityRegistry Mappings", () => {
     });
 
     test("Should prefer getCommunityDetails badge IDs over event params", () => {
-      // Event params carry badgeId=997/998, but the contract returns 992/991.
-      // The mapping must use the contract values.
+      // Event params carry assistantBadgeId=997 / memberBadgeId=998,
+      // but getCommunityDetails returns 992 / 991.
+      // The mapping must use the contract values, not the event params.
       createAndSaveBadge("93", true); // managerBadge = communityId = 93
       createAndSaveBadge("992", false); // assistantBadge from contract
       createAndSaveBadge("991", false); // memberBadge from contract
 
       handleCommunityCreated(
-        createCommunityCreatedEvent(
+        createCommunityCreatedEventWithContractDetails(
           BigInt.fromI32(93),
           Address.fromString(DEFAULT_CREATOR_ADDRESS),
-          BigInt.fromI32(992), // contract mock value
-          BigInt.fromI32(991), // contract mock value
-          "",
-          "",
+          BigInt.fromI32(997), // event param — should be ignored
+          BigInt.fromI32(998), // event param — should be ignored
+          BigInt.fromI32(992), // contract return — should win
+          BigInt.fromI32(991), // contract return — should win
         ),
       );
 

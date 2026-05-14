@@ -270,9 +270,11 @@ export function handleCommunityCreated(event: CommunityCreated): void {
   // TransferSingle for the initial badge mints fires before CommunityCreated,
   // so badge.community is null at that point and mint() cannot create activities.
   // Emit them here instead.
-  // Timestamps are offset so that a timestamp-desc query returns consequences
-  // after the creation event: CommunityCreated (+0) → BadgeLinked (+1) →
-  // manager mint (+2) → member mint (+3) → MemberJoined (+4, shown first).
+  // Timestamps are offset to preserve the causal sequence of follow-up events:
+  // CommunityCreated (+0) → BadgeLinked (+1) → manager mint (+2) →
+  // member mint (+3) → MemberJoined (+4). In a timestamp-desc query, the
+  // highest offset is shown first, so MemberJoined/mints appear before
+  // CommunityCreated.
   const managerMintActivity = new BadgeMintedActivity(baseId + "-manager-mint");
   managerMintActivity.community = communityId;
   managerMintActivity.timestamp = event.block.timestamp.plus(BigInt.fromI32(2));

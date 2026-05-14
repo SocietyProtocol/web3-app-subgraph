@@ -87,6 +87,62 @@ export function createCommunityCreatedEvent(
 }
 
 /**
+ * Creates a CommunityCreated event where the event params carry different
+ * badge IDs than what getCommunityDetails returns. Use this to verify that
+ * the mapping prefers the contract return values over the event params.
+ */
+export function createCommunityCreatedEventWithContractDetails(
+  communityId: BigInt,
+  creator: Address,
+  eventAssistantBadgeId: BigInt,
+  eventMemberBadgeId: BigInt,
+  contractAssistantBadgeId: BigInt,
+  contractMemberBadgeId: BigInt,
+  name: string = "",
+  description: string = "",
+  createdAt: BigInt = BigInt.fromI32(0),
+): CommunityCreated {
+  createMockedFunction(
+    COMMUNITY_REGISTRY_ADDRESS,
+    "getCommunityDetails",
+    "getCommunityDetails(uint256):((string,string,uint256,uint256,address,uint256))",
+  )
+    .withArgs([ethereum.Value.fromUnsignedBigInt(communityId)])
+    .returns([
+      ethereum.Value.fromTuple(
+        changetype<ethereum.Tuple>([
+          ethereum.Value.fromString(name),
+          ethereum.Value.fromString(description),
+          ethereum.Value.fromUnsignedBigInt(contractAssistantBadgeId),
+          ethereum.Value.fromUnsignedBigInt(contractMemberBadgeId),
+          ethereum.Value.fromAddress(Address.zero()),
+          ethereum.Value.fromUnsignedBigInt(createdAt),
+        ]),
+      ),
+    ]);
+
+  const event = changetype<CommunityCreated>(
+    newMockEventWithParams([
+      new ethereum.EventParam(
+        "communityId",
+        ethereum.Value.fromUnsignedBigInt(communityId),
+      ),
+      new ethereum.EventParam("creator", ethereum.Value.fromAddress(creator)),
+      new ethereum.EventParam(
+        "assistantBadgeId",
+        ethereum.Value.fromUnsignedBigInt(eventAssistantBadgeId),
+      ),
+      new ethereum.EventParam(
+        "memberBadgeId",
+        ethereum.Value.fromUnsignedBigInt(eventMemberBadgeId),
+      ),
+    ]),
+  );
+  event.address = COMMUNITY_REGISTRY_ADDRESS;
+  return event;
+}
+
+/**
  * Creates a CommunityCreated event whose getCommunityDetails call is mocked to
  * revert, so tests can verify the event-param fallback values are used.
  */
