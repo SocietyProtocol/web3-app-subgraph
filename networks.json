@@ -19,8 +19,8 @@
   },
   "sepolia": {
     "SocietyProtocolBadges": {
-      "address": "0x6AcD7735B3acF0DD677332a599FFfF71C18818BA",
-      "startBlock": 10704548
+      "address": "0x12406bB6d11Cb641e100F1d8595c0C5e63F0bD47",
+      "startBlock": 10845618
     },
     "EasyAuction": {
       "address": "0x96aa924EF625bd8eF4A2C4d369408d1491453Ec5",
@@ -31,8 +31,8 @@
       "startBlock": 10748728
     },
     "CommunityRegistry": {
-      "address": "0x84ffd2805af9d0946e02Fe19Cd1eE58228669B0e",
-      "startBlock": 10704555
+      "address": "0xE517446f4AC1035E334B5AEc57941F2644BA8639",
+      "startBlock": 10845623
     }
   }
 }

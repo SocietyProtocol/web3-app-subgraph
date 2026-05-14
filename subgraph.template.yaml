@@ -48,6 +48,8 @@ dataSources:
           handler: handleEditorsUpdated
         - event: BadgePermissions(indexed uint256,uint256[],uint256[],uint256[],address[])
           handler: handleBadgePermissions
+        - event: UserInvited(indexed address,indexed address,uint256)
+          handler: handleUserInvited
       file: ./src/society-protocol-badges.ts
   - kind: ethereum
     name: EasyAuction
@@ -139,7 +141,7 @@ dataSources:
         - name: CommunityRegistry
           file: ./abis/CommunityRegistry.json
       eventHandlers:
-        - event: CommunityCreated(indexed uint256,indexed address,uint256)
+        - event: CommunityCreated(indexed uint256,indexed address,uint256,uint256)
           handler: handleCommunityCreated
         - event: CommunityBadgeCreated(indexed uint256,indexed uint256)
           handler: handleCommunityBadgeCreated

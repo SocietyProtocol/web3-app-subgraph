@@ -78,6 +78,8 @@ function createAndSaveCommunity(
   community.manager = managerAddress;
   community.createdAt = BigInt.fromI32(1683094249);
   community.managerBadge = managerBadgeId;
+  community.assistantBadge = managerBadgeId;
+  community.memberBadge = managerBadgeId;
   community.memberCount = BigInt.zero();
   community.badgeCount = BigInt.zero();
   community.tierId = BigInt.zero();
