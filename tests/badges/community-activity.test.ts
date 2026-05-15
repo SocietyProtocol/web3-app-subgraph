@@ -193,7 +193,7 @@ describe("MemberJoinedActivity", () => {
     );
 
     createAndSaveBadge("101", "11");
-    createAndSaveCommunity("11", "998");
+    createAndSaveCommunity("11", "998", 0, "101");
     createAndSaveUser(member, ["101"]); // user already holds badge "101"
 
     handleTransferSingle(
@@ -402,7 +402,7 @@ describe("MemberLeftActivity", () => {
     );
 
     createAndSaveBadge("402", "41");
-    createAndSaveCommunity("41", "998");
+    createAndSaveCommunity("41", "998", 0, "402");
     createAndSaveUser(member, ["402"]); // holds badge but NOT in communities array
 
     handleTransferSingle(
@@ -672,7 +672,7 @@ describe("MemberTransferredActivity", () => {
     );
 
     createAndSaveBadge("701", "71");
-    createAndSaveCommunity("71", "998");
+    createAndSaveCommunity("71", "998", 0, "701");
     createAndSaveUser(fromMember, ["701"]);
     createAndSaveUser(toMember, ["701"]); // already holds badge
 
