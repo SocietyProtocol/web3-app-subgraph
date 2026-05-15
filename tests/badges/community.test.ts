@@ -71,6 +71,7 @@ function createAndSaveCommunity(
   managerBadgeId: string,
   managerAddress: string,
   name: string = "Test Community",
+  memberBadgeId: string = "",
 ): Community {
   const community = new Community(communityId);
   community.name = name;
@@ -79,7 +80,8 @@ function createAndSaveCommunity(
   community.createdAt = BigInt.fromI32(1683094249);
   community.managerBadge = managerBadgeId;
   community.assistantBadge = managerBadgeId;
-  community.memberBadge = managerBadgeId;
+  community.memberBadge =
+    memberBadgeId.length > 0 ? memberBadgeId : managerBadgeId;
   community.memberCount = BigInt.zero();
   community.badgeCount = BigInt.zero();
   community.tierId = BigInt.zero();
@@ -401,7 +403,13 @@ describe("Community Mappings", () => {
 
       // Community "10", manager badge "600", member badge "601"
       createAndSaveBadge("600", "Manager Badge");
-      createAndSaveCommunity("10", "600", managerAddress.toHexString());
+      createAndSaveCommunity(
+        "10",
+        "600",
+        managerAddress.toHexString(),
+        "Test Community",
+        "601",
+      );
 
       const memberBadge = createAndSaveBadge("601", "Member Badge");
       memberBadge.community = "10";
@@ -435,7 +443,13 @@ describe("Community Mappings", () => {
       );
 
       createAndSaveBadge("602", "Manager Badge");
-      createAndSaveCommunity("11", "602", managerAddress.toHexString());
+      createAndSaveCommunity(
+        "11",
+        "602",
+        managerAddress.toHexString(),
+        "Test Community",
+        "603",
+      );
 
       const memberBadge = createAndSaveBadge("603", "Member Badge");
       memberBadge.community = "11";
@@ -473,6 +487,8 @@ describe("Community Mappings", () => {
         "12",
         "604",
         managerAddress.toHexString(),
+        "Test Community",
+        "605",
       );
       community.memberCount = BigInt.fromI32(1);
       community.save();
@@ -519,6 +535,8 @@ describe("Community Mappings", () => {
         "13",
         "606",
         managerAddress.toHexString(),
+        "Test Community",
+        "607",
       );
       community.memberCount = BigInt.fromI32(1);
       community.save();
@@ -568,7 +586,13 @@ describe("Community Mappings", () => {
       );
 
       createAndSaveBadge("608", "Manager Badge");
-      createAndSaveCommunity("14", "608", managerAddress.toHexString());
+      createAndSaveCommunity(
+        "14",
+        "608",
+        managerAddress.toHexString(),
+        "Test Community",
+        "609",
+      );
 
       const memberBadge = createAndSaveBadge("609", "Member Badge");
       memberBadge.community = "14";

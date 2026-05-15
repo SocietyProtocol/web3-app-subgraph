@@ -70,6 +70,7 @@ function createAndSaveCommunity(
   communityId: string,
   managerBadgeId: string,
   memberCount: i32 = 0,
+  memberBadgeId: string = "",
 ): Community {
   const community = new Community(communityId);
   community.name = "Test Community";
@@ -78,7 +79,8 @@ function createAndSaveCommunity(
   community.createdAt = BigInt.fromI32(1683094249);
   community.managerBadge = managerBadgeId;
   community.assistantBadge = managerBadgeId;
-  community.memberBadge = managerBadgeId;
+  community.memberBadge =
+    memberBadgeId.length > 0 ? memberBadgeId : managerBadgeId;
   community.memberCount = BigInt.fromI32(memberCount);
   community.badgeCount = BigInt.zero();
   community.tierId = BigInt.zero();
@@ -121,7 +123,7 @@ describe("MemberJoinedActivity", () => {
     );
 
     createAndSaveBadge("100", "10"); // member badge linked to community "10"
-    createAndSaveCommunity("10", "999"); // manager badge "999" ≠ "100"
+    createAndSaveCommunity("10", "999", 0, "100"); // manager badge "999" ≠ "100"
     createAndSaveUser(member, []);
 
     handleTransferSingle(
@@ -351,7 +353,7 @@ describe("MemberLeftActivity", () => {
     );
 
     createAndSaveBadge("400", "40"); // member badge, community "40"
-    const community = createAndSaveCommunity("40", "999");
+    const community = createAndSaveCommunity("40", "999", 0, "400");
     community.memberCount = BigInt.fromI32(1);
     community.save();
 
@@ -427,7 +429,7 @@ describe("MemberLeftActivity", () => {
     const memberId = member.toHexString();
 
     createAndSaveBadge("403", "42");
-    const community = createAndSaveCommunity("42", "997");
+    const community = createAndSaveCommunity("42", "997", 0, "403");
     community.memberCount = BigInt.fromI32(1);
     community.save();
     createAndSaveUser(member, ["403"], ["42"]);
@@ -488,7 +490,7 @@ describe("BadgeBurnedActivity", () => {
     );
 
     createAndSaveBadge("501", "51");
-    const community = createAndSaveCommunity("51", "999", 1);
+    const community = createAndSaveCommunity("51", "999", 1, "501");
     community.save();
     createAndSaveUser(member, ["501"], ["51"]);
 
@@ -626,7 +628,7 @@ describe("MemberTransferredActivity", () => {
 
     // Badge "700" is a MEMBER badge (not the manager badge) of community "70"
     createAndSaveBadge("700", "70");
-    createAndSaveCommunity("70", "999"); // manager badge "999" ≠ "700"
+    createAndSaveCommunity("70", "999", 0, "700"); // manager badge "999" ≠ "700"
 
     const fromUser = createAndSaveUser(fromMember, ["700"], ["70"]);
     const community = Community.load("70")!;

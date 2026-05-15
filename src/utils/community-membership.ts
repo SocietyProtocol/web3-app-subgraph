@@ -102,7 +102,11 @@ export function mint(
           user.managedCommunities = updatedManaged;
           user.save();
         }
-      } else if (!user.communities.includes(community.id)) {
+      } else if (
+        community.memberBadge != null &&
+        badge.id == community.memberBadge &&
+        !user.communities.includes(community.id)
+      ) {
         // Member badge mint → user joins community
         const updatedCommunities = user.communities;
         updatedCommunities.push(community.id);
@@ -175,8 +179,11 @@ export function burn(
         burnActivity.user = user.id;
         burnActivity.save();
 
-        if (badge.id != community.managerBadge) {
-          // Non-manager community badge burned → user may leave community
+        if (
+          community.memberBadge != null &&
+          badge.id == community.memberBadge
+        ) {
+          // Member badge burned → user leaves community
           const communityIndex = user.communities.indexOf(community.id);
           if (communityIndex >= 0) {
             const updatedCommunities = user.communities;
@@ -287,7 +294,11 @@ export function transfer(
       activity.fromManager = fromUserId.toHexString();
       activity.toManager = toUserId.toHexString();
       activity.save();
-    } else if (community != null) {
+    } else if (
+      community != null &&
+      community.memberBadge != null &&
+      badge.id == community.memberBadge
+    ) {
       // Member badge transfer → transfer community membership
       const fromIndex = fromUser.communities.indexOf(community.id);
       if (fromIndex >= 0) {
