@@ -7,6 +7,8 @@ export const findOrCreateUser = (userId: string): User => {
     user = new User(userId);
     user.badges = [];
     user.managedBadges = [];
+    user.managedCommunities = [];
+    user.communities = [];
     user.save();
   }
 

@@ -5,12 +5,17 @@ type User @entity(immutable: false) {
   imageUrl: String
   profile: Badge
   badges: [Badge!]!
+  invitedBy: User
+  invitedUsers: [User!]! @derivedFrom(field: "invitedBy")
   managedBadges: [Badge!]!
+  managedCommunities: [Community!]!
+  communities: [Community!]!
 }
 
 type Badge @entity(immutable: false) {
   id: ID!
   name: String!
+  description: String
   isOfficial: Boolean!
   isCommunity: Boolean!
   isProfile: Boolean!
@@ -27,6 +32,162 @@ type Badge @entity(immutable: false) {
   holders: [User!]! @derivedFrom(field: "badges")
   holdersCount: BigInt!
   profileUser: User
+  community: Community
+}
+
+type Community @entity(immutable: false) {
+  id: ID!
+  name: String!
+  description: String
+  imageUrl: String
+  createdAt: BigInt!
+  tierId: BigInt!
+  tierName: String!
+  tierExpiresAt: BigInt!
+  managerAddress: String!
+  manager: User!
+  managerBadge: Badge!
+  assistantBadge: Badge
+  memberBadge: Badge
+  memberCount: BigInt!
+  badgeCount: BigInt!
+  members: [User!]! @derivedFrom(field: "communities")
+  badges: [Badge!]! @derivedFrom(field: "community")
+}
+
+interface CommunityActivityEvent {
+  id: ID!
+  community: Community!
+  timestamp: BigInt!
+  blockNumber: BigInt!
+  txHash: Bytes!
+}
+
+type CommunityCreatedActivity implements CommunityActivityEvent
+  @entity(immutable: true) {
+  id: ID!
+  community: Community!
+  timestamp: BigInt!
+  blockNumber: BigInt!
+  txHash: Bytes!
+  creator: User!
+}
+
+type CommunityDetailsUpdatedActivity implements CommunityActivityEvent
+  @entity(immutable: true) {
+  id: ID!
+  community: Community!
+  timestamp: BigInt!
+  blockNumber: BigInt!
+  txHash: Bytes!
+}
+
+type CommunityBadgeLinkedActivity implements CommunityActivityEvent
+  @entity(immutable: true) {
+  id: ID!
+  community: Community!
+  timestamp: BigInt!
+  blockNumber: BigInt!
+  txHash: Bytes!
+  badge: Badge!
+}
+
+type CommunityMembership @entity(immutable: false) {
+  id: ID!
+  user: User!
+  community: Community!
+  joinActivity: MemberJoinedActivity!
+}
+
+type MemberJoinedActivity implements CommunityActivityEvent
+  @entity(immutable: true) {
+  id: ID!
+  community: Community!
+  timestamp: BigInt!
+  blockNumber: BigInt!
+  txHash: Bytes!
+  badge: Badge!
+  user: User!
+}
+
+type MemberLeftActivity implements CommunityActivityEvent
+  @entity(immutable: true) {
+  id: ID!
+  community: Community!
+  timestamp: BigInt!
+  blockNumber: BigInt!
+  txHash: Bytes!
+  badge: Badge!
+  user: User!
+}
+
+type MemberTransferredActivity implements CommunityActivityEvent
+  @entity(immutable: true) {
+  id: ID!
+  community: Community!
+  timestamp: BigInt!
+  blockNumber: BigInt!
+  txHash: Bytes!
+  badge: Badge!
+  fromUser: User!
+  toUser: User!
+}
+
+type BadgeMintedActivity implements CommunityActivityEvent
+  @entity(immutable: true) {
+  id: ID!
+  community: Community!
+  timestamp: BigInt!
+  blockNumber: BigInt!
+  txHash: Bytes!
+  badge: Badge!
+  user: User!
+}
+
+type BadgeBurnedActivity implements CommunityActivityEvent
+  @entity(immutable: true) {
+  id: ID!
+  community: Community!
+  timestamp: BigInt!
+  blockNumber: BigInt!
+  txHash: Bytes!
+  badge: Badge!
+  user: User!
+}
+
+type ManagerChangedActivity implements CommunityActivityEvent
+  @entity(immutable: true) {
+  id: ID!
+  community: Community!
+  timestamp: BigInt!
+  blockNumber: BigInt!
+  txHash: Bytes!
+  badge: Badge!
+  fromManager: User!
+  toManager: User!
+}
+
+type CommunityTierGrantedActivity implements CommunityActivityEvent
+  @entity(immutable: true) {
+  id: ID!
+  community: Community!
+  timestamp: BigInt!
+  blockNumber: BigInt!
+  txHash: Bytes!
+  tierId: BigInt!
+  tierName: String!
+  tierExpiresAt: BigInt!
+}
+
+type CommunityTierRevokedActivity implements CommunityActivityEvent
+  @entity(immutable: true) {
+  id: ID!
+  community: Community!
+  timestamp: BigInt!
+  blockNumber: BigInt!
+  txHash: Bytes!
+  previousTierId: BigInt!
+  previousTierName: String!
 }
 
 type _Schema_

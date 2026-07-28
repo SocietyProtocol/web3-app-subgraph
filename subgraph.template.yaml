@@ -48,6 +48,8 @@ dataSources:
           handler: handleEditorsUpdated
         - event: BadgePermissions(indexed uint256,uint256[],uint256[],uint256[],address[])
           handler: handleBadgePermissions
+        - event: UserInvited(indexed address,indexed address,uint256)
+          handler: handleUserInvited
       file: ./src/society-protocol-badges.ts
   - kind: ethereum
     name: EasyAuction
@@ -105,6 +107,7 @@ dataSources:
       language: wasm/assemblyscript
       entities:
         - LockTransaction
+        - Community
       abis:
         - name: SocietyVipManager
           file: ./abis/SocietyVipManager.json
@@ -113,4 +116,36 @@ dataSources:
           handler: handleTokensLocked
         - event: TokensUnlocked(indexed address,uint256)
           handler: handleTokensUnlocked
+        - event: CommunityTierGranted(indexed uint256,uint256,uint256)
+          handler: handleCommunityTierGranted
+        - event: CommunityTierRevoked(indexed uint256)
+          handler: handleCommunityTierRevoked
       file: ./src/vip-manager.ts
+  # {{#CommunityRegistry}}
+  - kind: ethereum
+    name: CommunityRegistry
+    network: { { network } }
+    source:
+      abi: CommunityRegistry
+      address: "{ { CommunityRegistry.address } }"
+      startBlock: { { CommunityRegistry.startBlock } }
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.9
+      language: wasm/assemblyscript
+      entities:
+        - CommunityCreated
+        - CommunityBadgeCreated
+        - CommunityDetailsUpdated
+      abis:
+        - name: CommunityRegistry
+          file: ./abis/CommunityRegistry.json
+      eventHandlers:
+        - event: CommunityCreated(indexed uint256,indexed address,uint256,uint256)
+          handler: handleCommunityCreated
+        - event: CommunityBadgeCreated(indexed uint256,indexed uint256)
+          handler: handleCommunityBadgeCreated
+        - event: CommunityDetailsUpdated(indexed uint256,string,string)
+          handler: handleCommunityDetailsUpdated
+      file: ./src/community-registry.ts
+# {{/CommunityRegistry}}

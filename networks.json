@@ -11,20 +11,28 @@
     "vipManager": {
       "address": "0x91715d95004Bd57eDC1E0FD718688CEd475E130A",
       "startBlock": 24625474
+    },
+    "CommunityRegistry": {
+      "address": "0x0000000000000000000000000000000000000000",
+      "startBlock": 24630000
     }
   },
   "sepolia": {
     "SocietyProtocolBadges": {
-      "address": "0x76Aa1B43a651acc4320a4610af896ddfe38B428a",
-      "startBlock": 10049341
+      "address": "0x12406bB6d11Cb641e100F1d8595c0C5e63F0bD47",
+      "startBlock": 10845618
     },
     "EasyAuction": {
       "address": "0x96aa924EF625bd8eF4A2C4d369408d1491453Ec5",
       "startBlock": 9860928
     },
     "vipManager": {
-      "address": "0x51B7481dDe7Fd0b793dbF0CAabcCd6B78D9790DF",
-      "startBlock": 10204023
+      "address": "0xfBe16eD3999239c3Ee2e1d779b9397EB76f238E1",
+      "startBlock": 10748728
+    },
+    "CommunityRegistry": {
+      "address": "0xE517446f4AC1035E334B5AEc57941F2644BA8639",
+      "startBlock": 10845623
     }
   }
 }

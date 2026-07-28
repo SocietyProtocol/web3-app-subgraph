@@ -6,11 +6,16 @@ import {
   log,
   test,
 } from "matchstick-as/assembly/index";
+import { BigInt } from "@graphprotocol/graph-ts";
+import { Community } from "../../generated/schema";
 
 import {
+  handleCommunityTierGranted,
+  handleCommunityTierRevoked,
   handleTokensLocked,
   handleTokensUnlocked,
 } from "../../src/vip-manager";
+import { generateActivityId } from "../../src/utils/community-membership";
 import {
   userAddress1,
   userAddress2,
@@ -19,8 +24,34 @@ import {
   lockTimestamp,
   unlockTime1,
   unlockTime2,
+  bronzeBadgeId,
+  silverBadgeId,
+  goldBadgeId,
 } from "./constants";
-import { createTokensLockedEvent, createTokensUnlockedEvent } from "./utils";
+import {
+  createCommunityTierGrantedEvent,
+  createCommunityTierRevokedEvent,
+  createTokensLockedEvent,
+  createTokensUnlockedEvent,
+} from "./utils";
+
+// Helper: create and store a minimal Community entity in the mock store.
+function createAndSaveCommunity(id: string): void {
+  const community = new Community(id);
+  community.name = "Test Community";
+  community.createdAt = BigInt.fromI32(1683094249);
+  community.tierId = BigInt.zero();
+  community.tierName = "unaffiliated";
+  community.tierExpiresAt = BigInt.zero();
+  community.managerAddress = "0x0000000000000000000000000000000000000001";
+  community.manager = "0x0000000000000000000000000000000000000001";
+  community.managerBadge = id;
+  community.assistantBadge = id;
+  community.memberBadge = id;
+  community.memberCount = BigInt.zero();
+  community.badgeCount = BigInt.zero();
+  community.save();
+}
 
 describe("VipManager — handleTokensLocked", () => {
   afterEach(() => {
@@ -240,5 +271,344 @@ describe("VipManager — handleTokensUnlocked", () => {
       "handleTokensUnlocked records claim even with no prior lock tx",
       [],
     );
+  });
+});
+
+describe("VipManager — handleCommunityTierGranted", () => {
+  afterEach(() => {
+    clearStore();
+  });
+
+  test("sets tierId, tierName, and tierExpiresAt on the Community", () => {
+    createAndSaveCommunity("1");
+
+    const expiry = BigInt.fromI32(1900000000);
+    handleCommunityTierGranted(
+      createCommunityTierGrantedEvent(
+        BigInt.fromI32(1),
+        goldBadgeId, // gold
+        expiry,
+        lockTimestamp,
+      ),
+    );
+
+    assert.fieldEquals("Community", "1", "tierId", goldBadgeId.toString());
+    assert.fieldEquals("Community", "1", "tierName", "gold");
+    assert.fieldEquals("Community", "1", "tierExpiresAt", expiry.toString());
+
+    log.success("handleCommunityTierGranted sets gold tier correctly", []);
+  });
+
+  test("maps bronzeBadgeId to bronze", () => {
+    createAndSaveCommunity("2");
+
+    handleCommunityTierGranted(
+      createCommunityTierGrantedEvent(
+        BigInt.fromI32(2),
+        bronzeBadgeId,
+        BigInt.fromI32(1900000001),
+        lockTimestamp,
+      ),
+    );
+
+    assert.fieldEquals("Community", "2", "tierId", bronzeBadgeId.toString());
+    assert.fieldEquals("Community", "2", "tierName", "bronze");
+
+    log.success("handleCommunityTierGranted maps bronzeBadgeId to bronze", []);
+  });
+
+  test("maps silverBadgeId to silver", () => {
+    createAndSaveCommunity("3");
+
+    handleCommunityTierGranted(
+      createCommunityTierGrantedEvent(
+        BigInt.fromI32(3),
+        silverBadgeId,
+        BigInt.fromI32(1900000002),
+        lockTimestamp,
+      ),
+    );
+
+    assert.fieldEquals("Community", "3", "tierId", silverBadgeId.toString());
+    assert.fieldEquals("Community", "3", "tierName", "silver");
+
+    log.success("handleCommunityTierGranted maps silverBadgeId to silver", []);
+  });
+
+  test("unknown tierId falls back to unaffiliated", () => {
+    createAndSaveCommunity("4");
+
+    const unknownId = BigInt.fromI32(99);
+    handleCommunityTierGranted(
+      createCommunityTierGrantedEvent(
+        BigInt.fromI32(4),
+        unknownId,
+        BigInt.fromI32(1900000003),
+        lockTimestamp,
+      ),
+    );
+
+    assert.fieldEquals("Community", "4", "tierId", unknownId.toString());
+    assert.fieldEquals("Community", "4", "tierName", "unaffiliated");
+
+    log.success("unknown tierId falls back to unaffiliated", []);
+  });
+
+  test("does nothing when Community does not exist", () => {
+    handleCommunityTierGranted(
+      createCommunityTierGrantedEvent(
+        BigInt.fromI32(999),
+        goldBadgeId,
+        BigInt.fromI32(1900000000),
+        lockTimestamp,
+      ),
+    );
+
+    assert.notInStore("Community", "999");
+
+    log.success(
+      "handleCommunityTierGranted is a no-op when Community is absent",
+      [],
+    );
+  });
+});
+
+describe("VipManager — handleCommunityTierRevoked", () => {
+  afterEach(() => {
+    clearStore();
+  });
+
+  test("resets tierId to 0, tierName to unaffiliated, tierExpiresAt to 0", () => {
+    createAndSaveCommunity("10");
+
+    // First grant a tier
+    handleCommunityTierGranted(
+      createCommunityTierGrantedEvent(
+        BigInt.fromI32(10),
+        goldBadgeId,
+        BigInt.fromI32(1900000000),
+        lockTimestamp,
+      ),
+    );
+    assert.fieldEquals("Community", "10", "tierId", goldBadgeId.toString());
+
+    // Then revoke it
+    handleCommunityTierRevoked(
+      createCommunityTierRevokedEvent(BigInt.fromI32(10), lockTimestamp + 1),
+    );
+
+    assert.fieldEquals("Community", "10", "tierId", "0");
+    assert.fieldEquals("Community", "10", "tierName", "unaffiliated");
+    assert.fieldEquals("Community", "10", "tierExpiresAt", "0");
+
+    log.success(
+      "handleCommunityTierRevoked resets tier fields to defaults",
+      [],
+    );
+  });
+
+  test("does nothing when Community does not exist", () => {
+    handleCommunityTierRevoked(
+      createCommunityTierRevokedEvent(BigInt.fromI32(888), lockTimestamp),
+    );
+
+    assert.notInStore("Community", "888");
+
+    log.success(
+      "handleCommunityTierRevoked is a no-op when Community is absent",
+      [],
+    );
+  });
+});
+
+describe("VipManager — CommunityTierGrantedActivity", () => {
+  afterEach(() => {
+    clearStore();
+  });
+
+  test("Should create one CommunityTierGrantedActivity when tier is granted", () => {
+    createAndSaveCommunity("20");
+
+    handleCommunityTierGranted(
+      createCommunityTierGrantedEvent(
+        BigInt.fromI32(20),
+        goldBadgeId,
+        BigInt.fromI32(1900000000),
+        lockTimestamp,
+      ),
+    );
+
+    assert.entityCount("CommunityTierGrantedActivity", 1);
+
+    log.success("CommunityTierGrantedActivity created on tier grant", []);
+  });
+
+  test("Activity tierId, tierName, tierExpiresAt match the granted tier", () => {
+    createAndSaveCommunity("21");
+
+    const expiry = BigInt.fromI32(1900000001);
+    handleCommunityTierGranted(
+      createCommunityTierGrantedEvent(
+        BigInt.fromI32(21),
+        silverBadgeId,
+        expiry,
+        lockTimestamp,
+      ),
+    );
+
+    assert.entityCount("CommunityTierGrantedActivity", 1);
+    assert.fieldEquals("Community", "21", "tierName", "silver");
+    assert.fieldEquals("Community", "21", "tierId", silverBadgeId.toString());
+    assert.fieldEquals("Community", "21", "tierExpiresAt", expiry.toString());
+
+    log.success(
+      "CommunityTierGrantedActivity fields match the granted tier",
+      [],
+    );
+  });
+
+  test("Multiple grants create multiple activities", () => {
+    createAndSaveCommunity("22");
+    createAndSaveCommunity("23");
+
+    handleCommunityTierGranted(
+      createCommunityTierGrantedEvent(
+        BigInt.fromI32(22),
+        bronzeBadgeId,
+        BigInt.fromI32(1900000002),
+        lockTimestamp,
+      ),
+    );
+    handleCommunityTierGranted(
+      createCommunityTierGrantedEvent(
+        BigInt.fromI32(23),
+        goldBadgeId,
+        BigInt.fromI32(1900000003),
+        lockTimestamp + 1,
+      ),
+    );
+
+    assert.entityCount("CommunityTierGrantedActivity", 2);
+
+    log.success("Each tier grant creates a distinct activity", []);
+  });
+
+  test("Should NOT create activity when Community does not exist", () => {
+    handleCommunityTierGranted(
+      createCommunityTierGrantedEvent(
+        BigInt.fromI32(999),
+        goldBadgeId,
+        BigInt.fromI32(1900000000),
+        lockTimestamp,
+      ),
+    );
+
+    assert.entityCount("CommunityTierGrantedActivity", 0);
+
+    log.success("No activity when community not found on tier grant", []);
+  });
+});
+
+describe("VipManager — CommunityTierRevokedActivity", () => {
+  afterEach(() => {
+    clearStore();
+  });
+
+  test("Should create one CommunityTierRevokedActivity when tier is revoked", () => {
+    createAndSaveCommunity("30");
+
+    handleCommunityTierGranted(
+      createCommunityTierGrantedEvent(
+        BigInt.fromI32(30),
+        goldBadgeId,
+        BigInt.fromI32(1900000000),
+        lockTimestamp,
+      ),
+    );
+    handleCommunityTierRevoked(
+      createCommunityTierRevokedEvent(BigInt.fromI32(30), lockTimestamp + 1),
+    );
+
+    assert.entityCount("CommunityTierRevokedActivity", 1);
+
+    log.success("CommunityTierRevokedActivity created on tier revoke", []);
+  });
+
+  test("Activity previousTierId and previousTierName capture the tier before revocation", () => {
+    createAndSaveCommunity("31");
+
+    handleCommunityTierGranted(
+      createCommunityTierGrantedEvent(
+        BigInt.fromI32(31),
+        bronzeBadgeId,
+        BigInt.fromI32(1900000000),
+        lockTimestamp,
+      ),
+    );
+
+    const revokeEvent = createCommunityTierRevokedEvent(
+      BigInt.fromI32(31),
+      lockTimestamp + 1,
+    );
+    handleCommunityTierRevoked(revokeEvent);
+
+    const activityId = generateActivityId(
+      revokeEvent.transaction.hash,
+      revokeEvent.logIndex.toString(),
+      "tier-revoked",
+    );
+    assert.fieldEquals(
+      "CommunityTierRevokedActivity",
+      activityId,
+      "previousTierId",
+      bronzeBadgeId.toString(),
+    );
+    assert.fieldEquals(
+      "CommunityTierRevokedActivity",
+      activityId,
+      "previousTierName",
+      "bronze",
+    );
+
+    log.success(
+      "CommunityTierRevokedActivity captures previous tier correctly",
+      [],
+    );
+  });
+
+  test("Community tier fields reset to defaults after revocation", () => {
+    createAndSaveCommunity("32");
+
+    handleCommunityTierGranted(
+      createCommunityTierGrantedEvent(
+        BigInt.fromI32(32),
+        silverBadgeId,
+        BigInt.fromI32(1900000000),
+        lockTimestamp,
+      ),
+    );
+    handleCommunityTierRevoked(
+      createCommunityTierRevokedEvent(BigInt.fromI32(32), lockTimestamp + 1),
+    );
+
+    assert.fieldEquals("Community", "32", "tierId", "0");
+    assert.fieldEquals("Community", "32", "tierName", "unaffiliated");
+    assert.fieldEquals("Community", "32", "tierExpiresAt", "0");
+    assert.entityCount("CommunityTierRevokedActivity", 1);
+
+    log.success(
+      "Community resets to defaults and activity is created after revocation",
+      [],
+    );
+  });
+
+  test("Should NOT create activity when Community does not exist", () => {
+    handleCommunityTierRevoked(
+      createCommunityTierRevokedEvent(BigInt.fromI32(999), lockTimestamp),
+    );
+
+    assert.entityCount("CommunityTierRevokedActivity", 0);
+
+    log.success("No activity when community not found on tier revoke", []);
   });
 });

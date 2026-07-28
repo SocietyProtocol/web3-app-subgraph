@@ -2,6 +2,8 @@ import { Address, BigInt, Bytes, ethereum } from "@graphprotocol/graph-ts";
 import { newMockEventWithParams } from "matchstick-as/assembly/index";
 
 import {
+  CommunityTierGranted,
+  CommunityTierRevoked,
   TokensLocked,
   TokensUnlocked,
 } from "../../generated/SocietyVipManager/SocietyVipManager";
@@ -24,7 +26,7 @@ function hashFromTimestamp(blockTimestamp: i32): Bytes {
       byteToHex((blockTimestamp >> 24) & 0xff) +
       byteToHex((blockTimestamp >> 16) & 0xff) +
       byteToHex((blockTimestamp >> 8) & 0xff) +
-      byteToHex(blockTimestamp & 0xff)
+      byteToHex(blockTimestamp & 0xff),
   );
 }
 
@@ -32,23 +34,23 @@ export function createTokensLockedEvent(
   user: string,
   amount: BigInt,
   unlockTime: BigInt,
-  blockTimestamp: i32 = 0
+  blockTimestamp: i32 = 0,
 ): TokensLocked {
   let event = changetype<TokensLocked>(
     newMockEventWithParams([
       new ethereum.EventParam(
         "user",
-        ethereum.Value.fromAddress(Address.fromString(user))
+        ethereum.Value.fromAddress(Address.fromString(user)),
       ),
       new ethereum.EventParam(
         "amount",
-        ethereum.Value.fromUnsignedBigInt(amount)
+        ethereum.Value.fromUnsignedBigInt(amount),
       ),
       new ethereum.EventParam(
         "unlockTime",
-        ethereum.Value.fromUnsignedBigInt(unlockTime)
+        ethereum.Value.fromUnsignedBigInt(unlockTime),
       ),
-    ])
+    ]),
   );
   event.address = contractAddress;
   event.block.timestamp = BigInt.fromI32(blockTimestamp);
@@ -59,19 +61,65 @@ export function createTokensLockedEvent(
 export function createTokensUnlockedEvent(
   user: string,
   amount: BigInt,
-  blockTimestamp: i32 = 0
+  blockTimestamp: i32 = 0,
 ): TokensUnlocked {
   let event = changetype<TokensUnlocked>(
     newMockEventWithParams([
       new ethereum.EventParam(
         "user",
-        ethereum.Value.fromAddress(Address.fromString(user))
+        ethereum.Value.fromAddress(Address.fromString(user)),
       ),
       new ethereum.EventParam(
         "amount",
-        ethereum.Value.fromUnsignedBigInt(amount)
+        ethereum.Value.fromUnsignedBigInt(amount),
       ),
-    ])
+    ]),
+  );
+  event.address = contractAddress;
+  event.block.timestamp = BigInt.fromI32(blockTimestamp);
+  event.transaction.hash = hashFromTimestamp(blockTimestamp);
+  return event;
+}
+
+export function createCommunityTierGrantedEvent(
+  communityId: BigInt,
+  tierId: BigInt,
+  expiry: BigInt,
+  blockTimestamp: i32 = 0,
+): CommunityTierGranted {
+  let event = changetype<CommunityTierGranted>(
+    newMockEventWithParams([
+      new ethereum.EventParam(
+        "communityId",
+        ethereum.Value.fromUnsignedBigInt(communityId),
+      ),
+      new ethereum.EventParam(
+        "tierId",
+        ethereum.Value.fromUnsignedBigInt(tierId),
+      ),
+      new ethereum.EventParam(
+        "expiry",
+        ethereum.Value.fromUnsignedBigInt(expiry),
+      ),
+    ]),
+  );
+  event.address = contractAddress;
+  event.block.timestamp = BigInt.fromI32(blockTimestamp);
+  event.transaction.hash = hashFromTimestamp(blockTimestamp);
+  return event;
+}
+
+export function createCommunityTierRevokedEvent(
+  communityId: BigInt,
+  blockTimestamp: i32 = 0,
+): CommunityTierRevoked {
+  let event = changetype<CommunityTierRevoked>(
+    newMockEventWithParams([
+      new ethereum.EventParam(
+        "communityId",
+        ethereum.Value.fromUnsignedBigInt(communityId),
+      ),
+    ]),
   );
   event.address = contractAddress;
   event.block.timestamp = BigInt.fromI32(blockTimestamp);
