@@ -5,6 +5,7 @@ const {
   buildInventory,
   classifyUri,
   formatJsonl,
+  readConfig,
   replayEvents,
 } = require("./inventory-metadata-uris");
 
@@ -87,11 +88,16 @@ function fixtureProvider() {
   const topics = new Map();
   for (const log of logs) topics.set(log.topics[0], [log]);
   const calls = [];
+  const ranges = [];
   return {
     calls,
+    ranges,
     provider: {
       async getLogs(filter) {
-        return topics.get(filter.topics[0]) || [];
+        ranges.push({ topic: filter.topics[0], fromBlock: filter.fromBlock, toBlock: filter.toBlock });
+        return (topics.get(filter.topics[0]) || []).filter(
+          (log) => log.blockNumber >= filter.fromBlock && log.blockNumber <= filter.toBlock,
+        );
       },
       async call(_request, blockTag) {
         calls.push(blockTag);
@@ -112,6 +118,44 @@ test("replays in block/transaction/log order and reads uri at the creation block
   assert.equal(inventory.records[1].associationKind, "profile-badge");
   assert.equal(inventory.records[2].associationKind, "community-manager-badge");
   assert.equal(inventory.records[2].managerBadgeId, "1");
+});
+
+test("merges multi-chunk event results into global order", async () => {
+  const fixture = fixtureProvider();
+  const scan = { ...config(), logChunkSize: 1 };
+  const inventory = await buildInventory(fixture.provider, scan);
+  assert.deepEqual(
+    inventory.records.map((record) => record.blockNumber),
+    [100, 101, 103],
+  );
+  assert.ok(fixture.ranges.length > 6, "fixture should require multiple chunks");
+  assert.ok(fixture.ranges.every((range) => range.fromBlock === range.toBlock));
+});
+
+test("covers chunk boundaries exactly once", async () => {
+  const fixture = fixtureProvider();
+  await buildInventory(fixture.provider, { ...config(), logChunkSize: 2 });
+  const byTopic = new Map();
+  for (const range of fixture.ranges) {
+    const ranges = byTopic.get(range.topic) || [];
+    ranges.push([range.fromBlock, range.toBlock]);
+    byTopic.set(range.topic, ranges);
+  }
+  for (const ranges of byTopic.values()) {
+    assert.deepEqual(ranges, [[100, 101], [102, 103], [104, 105], [106, 107], [108, 109], [110, 110]]);
+  }
+});
+
+test("rejects invalid log chunk configuration", () => {
+  const base = {
+    ETH_MAINNET_ARCHIVE_RPC_URL: "https://archive.example.invalid/",
+    FROM_BLOCK: "100",
+    TO_BLOCK: "110",
+  };
+  for (const value of ["0", "1.5", "10001", " 10"]) {
+    assert.throws(() => readConfig({ ...base, LOG_CHUNK_SIZE: value }), /INVALID_LOG_CHUNK_SIZE/);
+  }
+  assert.equal(readConfig(base).logChunkSize, 5000);
 });
 
 test("classifies all URI/status classes without fetching content", () => {
@@ -143,6 +187,18 @@ test("fails closed when an event-block URI read is unavailable", async () => {
     throw new Error("provider response contains a secret");
   };
   await assert.rejects(buildInventory(fixture.provider, config()), /HISTORICAL_URI_READ_FAILED/);
+});
+
+test("sanitizes chunked log-fetch failures", async () => {
+  const secret = "rpc-key-must-not-escape";
+  const fixture = fixtureProvider();
+  fixture.provider.getLogs = async () => {
+    throw new Error(`request failed for ${secret}`);
+  };
+  await assert.rejects(
+    buildInventory(fixture.provider, { ...config(), logChunkSize: 1 }),
+    (error) => error.message === "RPC_LOG_FETCH_FAILED" && !error.message.includes(secret),
+  );
 });
 
 test("marks a contradictory modify/URI pair as a conflict", () => {

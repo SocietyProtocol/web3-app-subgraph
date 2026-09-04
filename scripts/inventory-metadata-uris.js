@@ -24,6 +24,8 @@ const REGISTRY_INTERFACE = new Interface(REGISTRY_ABI);
 
 const BADGE_EVENTS = ["BadgeCreated", "BadgeModified", "URI", "ProfileCreated"];
 const REGISTRY_EVENTS = ["CommunityCreated", "CommunityBadgeCreated"];
+const DEFAULT_LOG_CHUNK_SIZE = 5000;
+const MAX_LOG_CHUNK_SIZE = 10000;
 const REQUIRED_ENV = [
   "ETH_MAINNET_ARCHIVE_RPC_URL",
   "FROM_BLOCK",
@@ -51,6 +53,18 @@ function parseBlock(value, name) {
   return block;
 }
 
+function parseLogChunkSize(value) {
+  if (value === undefined) return DEFAULT_LOG_CHUNK_SIZE;
+  if (typeof value !== "string" || !/^[1-9]\d*$/.test(value)) {
+    fail("INVALID_LOG_CHUNK_SIZE");
+  }
+  const chunkSize = Number(value);
+  if (!Number.isSafeInteger(chunkSize) || chunkSize > MAX_LOG_CHUNK_SIZE) {
+    fail("INVALID_LOG_CHUNK_SIZE");
+  }
+  return chunkSize;
+}
+
 function readConfig(env = process.env) {
   for (const name of REQUIRED_ENV) {
     if (typeof env[name] !== "string" || env[name].length === 0) {
@@ -71,6 +85,7 @@ function readConfig(env = process.env) {
   const fromBlock = parseBlock(env.FROM_BLOCK, "FROM_BLOCK");
   const toBlock = parseBlock(env.TO_BLOCK, "TO_BLOCK");
   if (fromBlock > toBlock) fail("INVALID_BLOCK_RANGE");
+  const logChunkSize = parseLogChunkSize(env.LOG_CHUNK_SIZE);
 
   const mainnet = NETWORKS.mainnet;
   if (!mainnet || mainnet.chainId !== 1) fail("INVALID_MAINNET_CONFIGURATION");
@@ -84,6 +99,7 @@ function readConfig(env = process.env) {
     rpcUrl: rpcUrl.toString(),
     fromBlock,
     toBlock,
+    logChunkSize,
     starts: {
       SocietyProtocolBadges: badges.startBlock,
       CommunityRegistry: registry.startBlock,
@@ -223,6 +239,12 @@ function getEventTopic(iface, eventName) {
 }
 
 async function fetchEvents(provider, config) {
+  const logChunkSize = config.logChunkSize === undefined
+    ? DEFAULT_LOG_CHUNK_SIZE
+    : config.logChunkSize;
+  if (!Number.isSafeInteger(logChunkSize) || logChunkSize < 1 || logChunkSize > MAX_LOG_CHUNK_SIZE) {
+    fail("INVALID_LOG_CHUNK_SIZE");
+  }
   const requests = [
     ["SocietyProtocolBadges", config.addresses.SocietyProtocolBadges, BADGES_INTERFACE, BADGE_EVENTS],
     ["CommunityRegistry", config.addresses.CommunityRegistry, REGISTRY_INTERFACE, REGISTRY_EVENTS],
@@ -230,30 +252,44 @@ async function fetchEvents(provider, config) {
   const events = [];
   for (const [sourceContract, address, iface, names] of requests) {
     for (const eventName of names) {
-      let logs;
-      try {
-        logs = await provider.getLogs({
-          address,
-          fromBlock: config.fromBlock,
-          toBlock: config.toBlock,
-          topics: [getEventTopic(iface, eventName)],
-        });
-      } catch (_) {
-        fail("RPC_LOG_FETCH_FAILED");
-      }
-      if (!Array.isArray(logs)) fail("RPC_LOG_FETCH_FAILED");
-      for (const log of logs) {
-        const event = parseEvent(log, iface, sourceContract);
-        if (event.sourceKind !== eventName) fail("EVENT_DECODE_FAILED");
-        events.push(event);
+      const topic = getEventTopic(iface, eventName);
+      for (let chunkFrom = config.fromBlock; ; ) {
+        // Ranges are inclusive. Advancing from chunkTo + 1 avoids both
+        // boundary duplicates and boundary omissions.
+        const remaining = config.toBlock - chunkFrom;
+        const chunkTo = remaining >= logChunkSize - 1
+          ? chunkFrom + logChunkSize - 1
+          : config.toBlock;
+        let logs;
+        try {
+          logs = await provider.getLogs({
+            address,
+            fromBlock: chunkFrom,
+            toBlock: chunkTo,
+            topics: [topic],
+          });
+        } catch (_) {
+          fail("RPC_LOG_FETCH_FAILED");
+        }
+        if (!Array.isArray(logs)) fail("RPC_LOG_FETCH_FAILED");
+        for (const log of logs) {
+          const event = parseEvent(log, iface, sourceContract);
+          if (event.sourceKind !== eventName || event.blockNumber < chunkFrom || event.blockNumber > chunkTo) {
+            fail("EVENT_ORDER_GAP");
+          }
+          events.push(event);
+        }
+        if (chunkTo === config.toBlock) break;
+        chunkFrom = chunkTo + 1;
       }
     }
   }
   events.sort(orderCompare);
-  for (let i = 1; i < events.length; i += 1) {
-    const a = events[i - 1];
-    const b = events[i];
-    if (orderCompare(a, b) === 0) fail("EVENT_ORDER_GAP");
+  const positions = new Set();
+  for (const event of events) {
+    const position = `${event.sourceContract}:${event.blockNumber}:${event.transactionIndex}:${event.logIndex}`;
+    if (positions.has(position)) fail("EVENT_ORDER_GAP");
+    positions.add(position);
   }
   return events;
 }
@@ -518,4 +554,6 @@ module.exports = {
   readConfig,
   buildInventory,
   stableValue,
+  DEFAULT_LOG_CHUNK_SIZE,
+  MAX_LOG_CHUNK_SIZE,
 };

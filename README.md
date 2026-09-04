@@ -51,6 +51,13 @@ yarn inventory:metadata-uris \
   --summary ./artifacts/mainnet-uri-inventory.summary.json
 ```
 
+Every event filter is queried in inclusive `eth_getLogs` chunks of 5,000
+blocks, so the scan is not dependent on a provider-wide range limit. A
+server-only `LOG_CHUNK_SIZE` override may be used for a smaller chunk and must
+be a decimal integer from 1 through 10,000; invalid values fail closed. Chunk
+boundaries are advanced by one block and the merged results are globally
+ordered by block, transaction, and log.
+
 The RPC URL, and any credentials it contains, must exist only in the server
 job environment. The JSONL contains ordered URI assertions and profile/
 community-manager associations; the summary contains the configured starts,
