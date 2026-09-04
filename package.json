@@ -9,6 +9,8 @@
     "build:mainnet": "yarn run prepare:mainnet && graph codegen && graph build",
     "build:sepolia": "yarn run prepare:sepolia && graph codegen && graph build",
     "build": "graph build",
+    "inventory:metadata-uris": "node scripts/inventory-metadata-uris.js",
+    "test:inventory": "node --test scripts/inventory-metadata-uris.test.js",
     "deploy": "yarn run build:mainnet && graph deploy --node https://api.studio.thegraph.com/deploy/ society-mainnet",
     "deploy:testnet": "yarn run build:sepolia && graph deploy --node https://api.studio.thegraph.com/deploy/ society-testnet",
     "create-local": "graph create --node http://localhost:8020/ society-mainnet",
@@ -18,7 +20,8 @@
   },
   "dependencies": {
     "@graphprotocol/graph-cli": "0.98.1",
-    "@graphprotocol/graph-ts": "0.35.1"
+    "@graphprotocol/graph-ts": "0.35.1",
+    "ethers": "6.17.0"
   },
   "devDependencies": {
     "matchstick-as": "^0.5.2",

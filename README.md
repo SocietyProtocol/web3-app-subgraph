@@ -30,7 +30,50 @@ yarn build
 
 # Runs matchstick unit tests (the test fixture codegen uses Sepolia, where VIP is enabled)
 yarn test
+
+# Run the focused, offline Phase 1 inventory tests
+yarn test:inventory
 ```
+
+## Phase 1 mainnet URI inventory
+
+`inventory:metadata-uris` is a server-only, read-only archive-RPC command. It
+uses the checked-in contract ABIs and does not fetch IPFS content, contact
+Graph Node/Kubo/gateways, use latest state, or create transactions. The range
+is inclusive. Both output paths are explicit so the JSONL and its companion
+summary/checksum cannot be confused with logs:
+
+```bash
+ETH_MAINNET_ARCHIVE_RPC_URL='https://archive-rpc.example.invalid/' \
+FROM_BLOCK=25102724 TO_BLOCK=25133887 \
+yarn inventory:metadata-uris \
+  --output ./artifacts/mainnet-uri-inventory.jsonl \
+  --summary ./artifacts/mainnet-uri-inventory.summary.json
+```
+
+The RPC URL, and any credentials it contains, must exist only in the server
+job environment. The JSONL contains ordered URI assertions and profile/
+community-manager associations; the summary contains the configured starts,
+range, provider label, counts, unresolved IDs, and the JSONL SHA-256.
+
+### One-time private Railway inventory job
+
+Create a short-lived private job in the existing `outpost-graph` Railway
+environment, attach `ETH_MAINNET_ARCHIVE_RPC_URL` as a server-only secret, and
+run the following once. Use the fixed checkpoint (or a separately approved
+inclusive range) and copy the two artifacts out through the job's private
+artifact mechanism. Do not add a public domain, expose Graph Node/Kubo, or put
+the secret in a command, repository, artifact, or client variable.
+
+```bash
+yarn install --frozen-lockfile
+FROM_BLOCK=25102724 TO_BLOCK=25133887 \
+yarn inventory:metadata-uris \
+  --output /tmp/mainnet-uri-inventory.jsonl \
+  --summary /tmp/mainnet-uri-inventory.summary.json
+```
+
+The job is inventory-only and must be deleted after its evidence is retained.
 
 ## How Configuration Is Generated
 
