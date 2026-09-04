@@ -94,6 +94,7 @@ dataSources:
         - event: UserRegistration(indexed address,uint64)
           handler: handleUserRegistration
       file: ./src/easy-auction.ts
+  # {{#vipManager}}
   - kind: ethereum
     name: SocietyVipManager
     network: { { network } }
@@ -121,6 +122,7 @@ dataSources:
         - event: CommunityTierRevoked(indexed uint256)
           handler: handleCommunityTierRevoked
       file: ./src/vip-manager.ts
+  # {{/vipManager}}
   # {{#CommunityRegistry}}
   - kind: ethereum
     name: CommunityRegistry

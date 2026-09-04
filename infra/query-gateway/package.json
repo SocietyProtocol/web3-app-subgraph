@@ -1,0 +1,17 @@
+{
+  "name": "society-query-gateway",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Protected, constrained GraphQL ingress for the Society subgraph",
+  "type": "commonjs",
+  "engines": {
+    "node": ">=24.13.0 <25"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "graphql": "16.12.0"
+  }
+}

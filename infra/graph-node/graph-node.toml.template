@@ -1,0 +1,14 @@
+[chains]
+ingestor = "default"
+
+[store]
+
+[store.primary]
+connection = "${DATABASE_URL}"
+pool_size = 10
+
+[deployment]
+
+[[deployment.rule]]
+shard = "primary"
+indexers = ["default"]

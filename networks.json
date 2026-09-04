@@ -1,23 +1,26 @@
 {
   "mainnet": {
+    "network": "mainnet",
+    "chainId": 1,
     "SocietyProtocolBadges": {
-      "address": "0xa3af0da9733061da88b91ea28740780a887c8ce3",
-      "startBlock": 24621677
+      "address": "0x2313C0cDdc233c92d16c2cfE17DF5fDCcE556763",
+      "startBlock": 25128949
     },
     "EasyAuction": {
       "address": "0x0b7fFc1f4AD541A4Ed16b40D8c37f0929158D101",
       "startBlock": 12135186
     },
     "vipManager": {
-      "address": "0x91715d95004Bd57eDC1E0FD718688CEd475E130A",
-      "startBlock": 24625474
+      "enabled": false
     },
     "CommunityRegistry": {
-      "address": "0x0000000000000000000000000000000000000000",
-      "startBlock": 24630000
+      "address": "0xEa008f15E1454C79D6AA7B95Dd3E1d39Ba32EB76",
+      "startBlock": 25102724
     }
   },
   "sepolia": {
+    "network": "sepolia",
+    "chainId": 11155111,
     "SocietyProtocolBadges": {
       "address": "0x12406bB6d11Cb641e100F1d8595c0C5e63F0bD47",
       "startBlock": 10845618
