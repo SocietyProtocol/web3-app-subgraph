@@ -169,6 +169,42 @@ test("classifies all URI/status classes without fetching content", () => {
   assert.deepEqual(classifyUri(null), { uriClass: "unknown", status: "missing" });
 });
 
+test("preserves the block 25133887 inventory CID regression fixture", async () => {
+  const cid = "bafybeiefas6n4iw4johpoo5mmdpdhkeyjleu7bmc5cbxed7d2dgz74wcqy";
+  const block = 25133887;
+  const created = eventLog(
+    badges,
+    "BadgeCreated",
+    [77n, "Regression Badge", false, false, CREATOR],
+    block,
+    0,
+    0,
+    HASHES[0],
+  );
+  const provider = {
+    async getLogs(filter) {
+      return filter.fromBlock <= block && block <= filter.toBlock &&
+        filter.topics[0] === created.topics[0] ? [created] : [];
+    },
+    async call(_request, blockTag) {
+      assert.equal(blockTag, block);
+      return badges.encodeFunctionResult("uri", [`https://ipfs.io/ipfs/${cid}`]);
+    },
+  };
+  const inventory = await buildInventory(provider, {
+    ...config(),
+    fromBlock: block,
+    toBlock: block,
+    logChunkSize: 1,
+  });
+
+  assert.equal(inventory.records[0].rawEffectiveUri, `https://ipfs.io/ipfs/${cid}`);
+  assert.deepEqual(classifyUri(inventory.records[0].rawEffectiveUri), {
+    uriClass: "ipfs",
+    status: "resolved",
+  });
+});
+
 test("fails closed when required badge state is not present in the replay", () => {
   const event = {
     sourceKind: "ProfileCreated",

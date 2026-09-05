@@ -135,6 +135,63 @@ function renderOptionalBlock(template, name, enabled) {
   return template.replace(opening, "").replace(closing, "");
 }
 
+function assertV2Manifest(manifest, network) {
+  const spec = manifest.match(/^specVersion:\s*(\d+)\.(\d+)\.(\d+)\s*$/m);
+  const specVersion = spec
+    ? [Number(spec[1]), Number(spec[2]), Number(spec[3])]
+    : null;
+  if (
+    specVersion === null ||
+    specVersion[0] < 0 ||
+    (specVersion[0] === 0 && specVersion[1] < 0) ||
+    (specVersion[0] === 0 && specVersion[1] === 0 && specVersion[2] < 7)
+  ) {
+    throw new Error(`Generated ${network} manifest requires specVersion >= 0.0.7`);
+  }
+
+  if (!/^  - kind: file\/ipfs\s*$/m.test(manifest)) {
+    throw new Error(`Generated ${network} manifest is missing the file/ipfs template`);
+  }
+
+  const templateStart = manifest.indexOf("templates:");
+  if (templateStart < 0) {
+    throw new Error(`Generated ${network} manifest is missing templates`);
+  }
+  const template = manifest.slice(templateStart);
+  if (/^      kind:\s*\S+/m.test(template)) {
+    throw new Error(`Generated ${network} file template must not define mapping.kind`);
+  }
+
+  const abiEntry = template.match(
+    /^        - name:\s+(\S+)\s*\n\s{10}file:\s+(\S+)\s*$/m,
+  );
+  if (!abiEntry || !abiEntry[1] || !abiEntry[2]) {
+    throw new Error(`Generated ${network} file template requires a non-empty ABI entry`);
+  }
+  const abiPath = path.resolve(__dirname, "..", abiEntry[2]);
+  if (!fs.existsSync(abiPath) || !fs.statSync(abiPath).isFile()) {
+    throw new Error(`Generated ${network} file template ABI does not exist`);
+  }
+
+  if (/ipfsOnEthereumContracts/.test(manifest)) {
+    throw new Error(`Generated ${network} manifest enables ipfsOnEthereumContracts`);
+  }
+}
+
+function assertNoInlineIpfsSource(directory) {
+  for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+    const entryPath = path.join(directory, entry.name);
+    if (entry.isDirectory()) {
+      assertNoInlineIpfsSource(entryPath);
+    } else if (entry.isFile() && /\.(ts|tsx)$/.test(entry.name)) {
+      const source = fs.readFileSync(entryPath, "utf8");
+      if (/\bipfs\s*\.\s*cat\s*\(/.test(source)) {
+        throw new Error(`Reachable inline ipfs.cat source found in ${entryPath}`);
+      }
+    }
+  }
+}
+
 function main() {
   const network = process.argv[2];
   if (!network) {
@@ -193,8 +250,20 @@ function main() {
     fail("Generated manifest contains unresolved template markers");
   }
 
+  try {
+    assertV2Manifest(template, network);
+    assertNoInlineIpfsSource(path.join(__dirname, "..", "src"));
+  } catch (error) {
+    fail(error.message);
+  }
+
   const outputPath = path.join(__dirname, "..", "subgraph.yaml");
   fs.writeFileSync(outputPath, template);
+  try {
+    assertV2Manifest(fs.readFileSync(outputPath, "utf8"), network);
+  } catch (error) {
+    fail(error.message);
+  }
 
   // Generate auction-config.ts from AUCTION_ID env variable.
   // Set AUCTION_ID=<id> to index only that auction; leave unset (or "0") to index all.

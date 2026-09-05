@@ -1,7 +1,6 @@
-specVersion: 0.0.4
+specVersion: 0.0.7
 features:
   - fullTextSearch
-  - ipfsOnEthereumContracts
 schema:
   file: ./schema.graphql
 dataSources:
@@ -151,3 +150,16 @@ dataSources:
           handler: handleCommunityDetailsUpdated
       file: ./src/community-registry.ts
 # {{/CommunityRegistry}}
+templates:
+  - kind: file/ipfs
+    name: MetadataFile
+    mapping:
+      apiVersion: 0.0.9
+      language: wasm/assemblyscript
+      entities:
+        - Metadata
+      abis:
+        - name: SocietyProtocolBadges
+          file: ./abis/SocietyProtocolBadges.json
+      handler: handleMetadata
+      file: ./src/metadata.ts

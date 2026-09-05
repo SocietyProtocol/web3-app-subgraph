@@ -31,6 +31,8 @@ import {
   ZERO_ADDRESS,
 } from "./society-protocol-badges-utils";
 
+const OBSERVED_CID = "bafybeiefas6n4iw4johpoo5mmdpdhkeyjleu7bmc5cbxed7d2dgz74wcqy";
+
 /**
  * Helper: creates a Badge with all required schema fields initialised and saves it.
  * Use this in tests that need a Badge in the store without going through an event handler.
@@ -126,7 +128,32 @@ describe("Society Protocol Badges Mappings", () => {
       log.success("Non-official badge created successfully", []);
     });
 
-    test("Should handle IPFS metadata with valid string imageUrl", () => {
+    test("Should link an observed gateway URI by its canonical CID/path", () => {
+      const event = createBadgeCreatedEvent(
+        BigInt.fromI32(6),
+        "Observed Metadata Badge",
+        false,
+        BigInt.fromI32(1683094254),
+        false,
+        Address.fromString("0x5eA1474CeFA1ea5986327F97932B587deD802CF7"),
+        `https://ipfs.io/ipfs/${OBSERVED_CID}`,
+      );
+
+      handleBadgeCreated(event);
+
+      assert.fieldEquals(
+        "Badge",
+        "6",
+        "metadata",
+        OBSERVED_CID,
+      );
+      const badge = Badge.load("6");
+      assert.assertNotNull(badge);
+      assert.assertNull(badge!.imageUrl);
+      assert.assertNull(badge!.description);
+    });
+
+    test("Should leave legacy fields absent for unsupported metadata URI", () => {
       const badgeId = BigInt.fromI32(3);
       const badgeName = "IPFS Badge";
       const isOfficial = true;
@@ -151,18 +178,11 @@ describe("Society Protocol Badges Mappings", () => {
 
       assert.fieldEquals("Badge", "3", "id", "3");
       assert.fieldEquals("Badge", "3", "name", badgeName);
-      assert.fieldEquals(
-        "Badge",
-        "3",
-        "imageUrl",
-        "https://example.com/image.png",
-      );
-      assert.fieldEquals(
-        "Badge",
-        "3",
-        "description",
-        "A badge with valid metadata",
-      );
+      const badge3 = Badge.load("3");
+      assert.assertNotNull(badge3);
+      assert.assertNull(badge3!.metadata);
+      assert.assertNull(badge3!.imageUrl);
+      assert.assertNull(badge3!.description);
 
       log.success("Badge with valid IPFS metadata created successfully", []);
     });
@@ -330,9 +350,16 @@ describe("Society Protocol Badges Mappings", () => {
       log.success("Handled non-existent user gracefully", []);
     });
 
-    test("Should parse valid IPFS profile metadata with string fields", () => {
+    test("Should inherit the badge Metadata reference without inline parsing", () => {
       const ipfsHash = "QmProfileHash123";
-      createAndSaveBadge("10", "Profile Badge", true, `ipfs://${ipfsHash}`);
+      const profileBadge = createAndSaveBadge(
+        "10",
+        "Profile Badge",
+        true,
+        `https://ipfs.io/ipfs/${OBSERVED_CID}`,
+      );
+      profileBadge.metadata = OBSERVED_CID;
+      profileBadge.save();
 
       // Mock IPFS file with valid profile metadata
       mockIpfsFile(
@@ -359,19 +386,17 @@ describe("Society Protocol Badges Mappings", () => {
         "profileUser",
         userAddress.toHexString(),
       );
-      assert.fieldEquals("User", userAddress.toHexString(), "name", "John Doe");
+      const user = User.load(userAddress.toHexString());
+      assert.assertNotNull(user);
       assert.fieldEquals(
         "User",
         userAddress.toHexString(),
-        "bio",
-        "Software developer and blockchain enthusiast",
+        "metadata",
+        OBSERVED_CID,
       );
-      assert.fieldEquals(
-        "User",
-        userAddress.toHexString(),
-        "imageUrl",
-        "https://example.com/profile.png",
-      );
+      assert.assertNull(user!.name);
+      assert.assertNull(user!.bio);
+      assert.assertNull(user!.imageUrl);
 
       log.success(
         "Profile metadata parsed successfully with valid strings",
@@ -412,19 +437,9 @@ describe("Society Protocol Badges Mappings", () => {
       const user11 = User.load(userAddress.toHexString());
       assert.assertNotNull(user11);
       assert.assertNull(user11!.name);
-      // bio and imageUrl are valid strings and should be set
-      assert.fieldEquals(
-        "User",
-        userAddress.toHexString(),
-        "bio",
-        "Software developer",
-      );
-      assert.fieldEquals(
-        "User",
-        userAddress.toHexString(),
-        "imageUrl",
-        "https://example.com/profile.png",
-      );
+      assert.assertNull(user11!.metadata);
+      assert.assertNull(user11!.bio);
+      assert.assertNull(user11!.imageUrl);
 
       log.success("Invalid profile name type handled gracefully", []);
     });
@@ -462,14 +477,9 @@ describe("Society Protocol Badges Mappings", () => {
       const user12 = User.load(userAddress.toHexString());
       assert.assertNotNull(user12);
       assert.assertNull(user12!.bio);
-      // name and imageUrl are valid strings and should be set
-      assert.fieldEquals("User", userAddress.toHexString(), "name", "John Doe");
-      assert.fieldEquals(
-        "User",
-        userAddress.toHexString(),
-        "imageUrl",
-        "https://example.com/profile.png",
-      );
+      assert.assertNull(user12!.metadata);
+      assert.assertNull(user12!.name);
+      assert.assertNull(user12!.imageUrl);
 
       log.success("Invalid profile bio type handled gracefully", []);
     });
@@ -507,14 +517,9 @@ describe("Society Protocol Badges Mappings", () => {
       const user13 = User.load(userAddress.toHexString());
       assert.assertNotNull(user13);
       assert.assertNull(user13!.imageUrl);
-      // name and bio are valid strings and should be set
-      assert.fieldEquals("User", userAddress.toHexString(), "name", "John Doe");
-      assert.fieldEquals(
-        "User",
-        userAddress.toHexString(),
-        "bio",
-        "Software developer",
-      );
+      assert.assertNull(user13!.metadata);
+      assert.assertNull(user13!.name);
+      assert.assertNull(user13!.bio);
 
       log.success("Invalid profile imageUrl type handled gracefully", []);
     });
@@ -571,7 +576,7 @@ describe("Society Protocol Badges Mappings", () => {
       log.success("URI updated with invalid metadata handled gracefully", []);
     });
 
-    test("Should update profile user metadata when URI changes on a profile badge", () => {
+    test("Should replace profile user Metadata reference when URI changes", () => {
       const ipfsHash = "QmNewProfileMeta";
       const userAddress = Address.fromString(
         "0x5eA1474CeFA1ea5986327F97932B587deD802CF7",
@@ -593,21 +598,53 @@ describe("Society Protocol Badges Mappings", () => {
       handleURI(uriEvent);
 
       assert.fieldEquals("Badge", "30", "uri", `ipfs://${ipfsHash}`);
-      assert.fieldEquals("User", userAddress.toHexString(), "name", "John Doe");
-      assert.fieldEquals(
-        "User",
-        userAddress.toHexString(),
-        "bio",
-        "Software developer and blockchain enthusiast",
-      );
-      assert.fieldEquals(
-        "User",
-        userAddress.toHexString(),
-        "imageUrl",
-        "https://example.com/profile.png",
-      );
+      const user = User.load(userAddress.toHexString());
+      assert.assertNotNull(user);
+      assert.assertNull(user!.metadata);
+      assert.assertNull(user!.name);
+      assert.assertNull(user!.bio);
+      assert.assertNull(user!.imageUrl);
 
       log.success("Profile user metadata updated when URI changes", []);
+    });
+
+    test("Should replace and clear profile Metadata references deterministically", () => {
+      const userAddress = Address.fromString(
+        "0x5eA1474CeFA1ea5986327F97932B587deD802CF7",
+      );
+      createAndSaveUser(userAddress, new Array());
+      const badge = createAndSaveBadge(
+        "33",
+        "Profile Badge",
+        true,
+        `https://ipfs.io/ipfs/${OBSERVED_CID}`,
+      );
+      badge.isProfile = true;
+      badge.profileUser = userAddress.toHexString();
+      badge.metadata = OBSERVED_CID;
+      badge.save();
+
+      handleURI(
+        createURIEvent(
+          BigInt.fromI32(33),
+          `https://ipfs.io/ipfs/${OBSERVED_CID}`,
+        ),
+      );
+      assert.fieldEquals("Badge", "33", "metadata", OBSERVED_CID);
+      assert.fieldEquals(
+        "User",
+        userAddress.toHexString(),
+        "metadata",
+        OBSERVED_CID,
+      );
+
+      handleURI(createURIEvent(BigInt.fromI32(33), ""));
+      const clearedUser = User.load(userAddress.toHexString());
+      assert.assertNotNull(clearedUser);
+      assert.assertNull(clearedUser!.metadata);
+      const clearedBadge = Badge.load("33");
+      assert.assertNotNull(clearedBadge);
+      assert.assertNull(clearedBadge!.metadata);
     });
 
     test("Should not update user when URI changes on a non-profile badge", () => {
@@ -1021,7 +1058,7 @@ describe("Society Protocol Badges Mappings", () => {
       log.success("Badge modified successfully", []);
     });
 
-    test("Should update uri and imageUrl from IPFS metadataURI", () => {
+    test("Should update metadata from a valid gateway URI without inline parsing", () => {
       createAndSaveBadge("2", "Badge Two", true);
 
       mockIpfsFile(
@@ -1034,25 +1071,24 @@ describe("Society Protocol Badges Mappings", () => {
         "Badge Two Updated",
         true,
         false,
-        "ipfs://QmValidMetadata",
+        `https://ipfs.io/ipfs/${OBSERVED_CID}/badge.json`,
       );
 
       handleBadgeModified(modifiedEvent);
 
       assert.fieldEquals("Badge", "2", "name", "Badge Two Updated");
-      assert.fieldEquals("Badge", "2", "uri", "ipfs://QmValidMetadata");
       assert.fieldEquals(
         "Badge",
         "2",
-        "imageUrl",
-        "https://example.com/image.png",
+        "uri",
+        `https://ipfs.io/ipfs/${OBSERVED_CID}/badge.json`,
       );
-      assert.fieldEquals(
-        "Badge",
-        "2",
-        "description",
-        "A badge with valid metadata",
-      );
+      assert.fieldEquals("Badge", "2", "metadata", `${OBSERVED_CID}/badge.json`);
+      const badge2 = Badge.load("2");
+      assert.assertNotNull(badge2);
+      assert.fieldEquals("Badge", "2", "metadata", `${OBSERVED_CID}/badge.json`);
+      assert.assertNull(badge2!.imageUrl);
+      assert.assertNull(badge2!.description);
 
       log.success("Badge uri and imageUrl updated from IPFS", []);
     });

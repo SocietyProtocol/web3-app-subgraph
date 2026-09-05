@@ -82,6 +82,11 @@ yarn inventory:metadata-uris \
 
 The job is inventory-only and must be deleted after its evidence is retained.
 
+The file template intentionally has no local metadata dedupe guard: identical
+template parameters are the identity boundary. A candidate Graph Node v0.45.0
+deployment must verify that same-template-parameter data sources are deduplicated
+and that shared immutable CIDs are handled safely before publishing v2.
+
 ## How Configuration Is Generated
 
 `subgraph.yaml` is generated from `subgraph.template.yaml` using `networks.json`:

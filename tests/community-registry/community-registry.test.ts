@@ -22,6 +22,8 @@ import {
   DEFAULT_CREATOR_ADDRESS,
 } from "./community-registry-utils";
 
+const OBSERVED_CID = "bafybeiefas6n4iw4johpoo5mmdpdhkeyjleu7bmc5cbxed7d2dgz74wcqy";
+
 // ── helpers ──────────────────────────────────────────────────────────────────
 
 function createAndSaveBadge(
@@ -320,8 +322,10 @@ describe("CommunityRegistry Mappings", () => {
       );
     });
 
-    test("Should clone imageUrl from manager badge to community", () => {
-      createAndSaveBadge("70", true, "https://example.com/community.png");
+    test("Should initialize Community from manager Metadata reference", () => {
+      const managerBadge = createAndSaveBadge("70", true);
+      managerBadge.metadata = OBSERVED_CID;
+      managerBadge.save();
       createAndSaveBadge("71", false);
 
       handleCommunityCreated(
@@ -336,9 +340,12 @@ describe("CommunityRegistry Mappings", () => {
       assert.fieldEquals(
         "Community",
         "70",
-        "imageUrl",
-        "https://example.com/community.png",
+        "metadata",
+        OBSERVED_CID,
       );
+      const community = Community.load("70");
+      assert.assertNotNull(community);
+      assert.assertNull(community!.imageUrl);
 
       log.success("imageUrl cloned from manager badge to community", []);
     });

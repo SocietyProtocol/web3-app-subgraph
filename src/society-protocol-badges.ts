@@ -14,7 +14,7 @@ import {
   UserInvited,
 } from "../generated/SocietyProtocolBadges/SocietyProtocolBadges";
 import { findOrCreateUser } from "./user";
-import { fetchIpfsMetadata, getStringFromTypedMap } from "./utils/metadata";
+import { setMetadataReference } from "./utils/metadata";
 import { findOrCreateBadge, bigIntArrayToStringArray } from "./utils/badge";
 import { mint, burn, transfer } from "./utils/community-membership";
 
@@ -39,30 +39,13 @@ export function handleBadgeCreated(event: BadgeCreated): void {
   badge.createdAt = event.block.timestamp;
 
   const contract = SocietyProtocolBadges.bind(event.address);
-
   const uriResult = contract.try_uri(event.params.id);
-
-  if (!uriResult.reverted) {
-    badge.uri = uriResult.value;
-    log.info("URI found for badge ID: {}: {}", [
-      event.params.id.toString(),
-      uriResult.value,
-    ]);
-  } else {
-    log.info("URI not found for badge ID: {}", [event.params.id.toString()]);
-
-    badge.uri = "";
-  }
-
-  const metadata = fetchIpfsMetadata(badge.uri);
-
-  if (metadata !== null) {
-    badge.imageUrl = getStringFromTypedMap(metadata, "imageUrl");
-    badge.description = getStringFromTypedMap(metadata, "description");
-  } else {
-    badge.imageUrl = null;
-    badge.description = null;
-  }
+  badge.uri = uriResult.reverted ? "" : uriResult.value;
+  badge.metadata = setMetadataReference(badge.uri);
+  // Legacy enrichment is intentionally absent from chain handlers. Metadata
+  // files populate only the immutable Metadata entity.
+  badge.imageUrl = null;
+  badge.description = null;
 
   badge.save();
 }
@@ -80,15 +63,9 @@ export function handleBadgeModified(event: BadgeModified): void {
   badge.isOfficial = event.params.isOfficial;
   badge.isCommunity = event.params.isCommunityBadge;
   badge.uri = event.params.metadataURI;
-  const metadata = fetchIpfsMetadata(badge.uri);
-
-  if (metadata !== null) {
-    badge.imageUrl = getStringFromTypedMap(metadata, "imageUrl");
-    badge.description = getStringFromTypedMap(metadata, "description");
-  } else {
-    badge.imageUrl = null;
-    badge.description = null;
-  }
+  badge.metadata = setMetadataReference(badge.uri);
+  badge.imageUrl = null;
+  badge.description = null;
 
   badge.save();
 }
@@ -121,13 +98,10 @@ export function handleProfileCreated(event: ProfileCreated): void {
   }
 
   user.profile = badge.id;
-
-  const metaData = fetchIpfsMetadata(badge.uri);
-  if (metaData !== null) {
-    user.name = getStringFromTypedMap(metaData, "name");
-    user.bio = getStringFromTypedMap(metaData, "bio");
-    user.imageUrl = getStringFromTypedMap(metaData, "imageUrl");
-  }
+  user.metadata = badge.metadata;
+  user.name = null;
+  user.bio = null;
+  user.imageUrl = null;
 
   user.save();
 
@@ -144,28 +118,27 @@ export function handleURI(event: URI): void {
   }
 
   badge.uri = event.params.value;
-
-  const metaData = fetchIpfsMetadata(event.params.value);
-  badge.imageUrl =
-    metaData !== null ? getStringFromTypedMap(metaData, "imageUrl") : null;
-  badge.description =
-    metaData !== null ? getStringFromTypedMap(metaData, "description") : null;
+  badge.metadata = setMetadataReference(badge.uri);
+  badge.imageUrl = null;
+  badge.description = null;
   badge.save();
 
   if (badge.isProfile && badge.profileUser != null) {
     const user = User.load(badge.profileUser!);
-    if (user != null && metaData !== null) {
-      user.name = getStringFromTypedMap(metaData, "name");
-      user.bio = getStringFromTypedMap(metaData, "bio");
-      user.imageUrl = getStringFromTypedMap(metaData, "imageUrl");
+    if (user != null) {
+      user.metadata = badge.metadata;
+      user.name = null;
+      user.bio = null;
+      user.imageUrl = null;
       user.save();
     }
   }
 
   if (badge.community != null) {
     const community = Community.load(badge.community!);
-    if (community != null && metaData !== null) {
-      community.imageUrl = getStringFromTypedMap(metaData, "imageUrl");
+    if (community != null) {
+      community.metadata = badge.metadata;
+      community.imageUrl = null;
       community.save();
     }
   }

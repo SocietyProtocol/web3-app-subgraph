@@ -26,6 +26,8 @@ import {
   ZERO_ADDRESS,
 } from "./society-protocol-badges-utils";
 
+const OBSERVED_CID = "bafybeiefas6n4iw4johpoo5mmdpdhkeyjleu7bmc5cbxed7d2dgz74wcqy";
+
 // ── helpers ───────────────────────────────────────────────────────────────────
 
 function createAndSaveBadge(
@@ -338,7 +340,7 @@ describe("Community Mappings", () => {
   });
 
   describe("handleURI - community badge", () => {
-    test("Should update Community imageUrl when URI changes on a linked badge", () => {
+    test("Should clear legacy Community enrichment on URI replacement", () => {
       const ipfsHash = "QmCommunityURIUpdate";
       const creatorAddress = Address.fromString(DEFAULT_CREATOR_ADDRESS);
 
@@ -359,15 +361,13 @@ describe("Community Mappings", () => {
       handleURI(createURIEvent(BigInt.fromI32(500), `ipfs://${ipfsHash}`));
 
       assert.fieldEquals("Badge", "500", "uri", `ipfs://${ipfsHash}`);
-      assert.fieldEquals(
-        "Community",
-        "5",
-        "imageUrl",
-        "https://example.com/image.png",
-      );
+      const community = Community.load("5");
+      assert.assertNotNull(community);
+      assert.assertNull(community!.metadata);
+      assert.assertNull(community!.imageUrl);
 
       log.success(
-        "Community imageUrl updated when URI changes on a linked badge",
+        "Legacy Community enrichment remains absent on URI replacement",
         [],
       );
     });
@@ -390,6 +390,54 @@ describe("Community Mappings", () => {
       log.success(
         "Unlinked badge URI change does not affect any Community",
         [],
+      );
+    });
+
+    test("Should propagate manager badge Metadata replacement to Community", () => {
+      const creatorAddress = Address.fromString(DEFAULT_CREATOR_ADDRESS);
+      const managerBadge = createAndSaveBadge("502", "Manager Badge", false, "");
+      managerBadge.community = "5";
+      managerBadge.metadata = OBSERVED_CID;
+      managerBadge.save();
+      createAndSaveCommunity("5", "502", creatorAddress.toHexString());
+
+      handleURI(
+        createURIEvent(
+          BigInt.fromI32(502),
+          `https://ipfs.io/ipfs/${OBSERVED_CID}`,
+        ),
+      );
+
+      assert.fieldEquals("Badge", "502", "metadata", OBSERVED_CID);
+      assert.fieldEquals(
+        "Community",
+        "5",
+        "metadata",
+        OBSERVED_CID,
+      );
+    });
+
+    test("Should propagate a valid URI from a linked non-manager badge", () => {
+      const creatorAddress = Address.fromString(DEFAULT_CREATOR_ADDRESS);
+      createAndSaveBadge("504", "Manager Badge", true, "");
+      const linkedBadge = createAndSaveBadge("503", "Member Badge", false, "");
+      linkedBadge.community = "5";
+      linkedBadge.save();
+      createAndSaveCommunity("5", "504", creatorAddress.toHexString());
+
+      handleURI(
+        createURIEvent(
+          BigInt.fromI32(503),
+          `https://ipfs.io/ipfs/${OBSERVED_CID}/member.json`,
+        ),
+      );
+
+      assert.fieldEquals("Badge", "503", "metadata", `${OBSERVED_CID}/member.json`);
+      assert.fieldEquals(
+        "Community",
+        "5",
+        "metadata",
+        `${OBSERVED_CID}/member.json`,
       );
     });
   });

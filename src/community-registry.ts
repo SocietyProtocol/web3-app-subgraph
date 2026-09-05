@@ -171,10 +171,10 @@ export function handleCommunityCreated(event: CommunityCreated): void {
     managerBadgeLinked = true;
   }
 
-  const badgeImageUrl = managerBadge.imageUrl;
-  if (badgeImageUrl != null) {
-    community.imageUrl = badgeImageUrl;
-  }
+  // The manager badge is the community's initial metadata source. The
+  // immutable Metadata entity may be processed after this chain event.
+  community.metadata = managerBadge.metadata;
+  community.imageUrl = null;
 
   // Ensure manager badge is linked (may already be set by handleCommunityBadgeCreated)
   if (managerBadge.community == null) {
