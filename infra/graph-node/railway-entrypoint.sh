@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+printf '%s\n' 'graph-node-entrypoint: start'
+
 if [[ -z "${DATABASE_URL:-}" ]]; then
   printf '%s\n' 'DATABASE_URL is required' >&2
   exit 1
@@ -30,14 +32,19 @@ if [[ ! "$ready_timeout" =~ ^[1-9][0-9]*$ || "$ready_timeout" -gt 300 ]]; then
   exit 1
 fi
 
-ready_deadline=$((SECONDS + ready_timeout))
-while ! (builtin exec 3<>"/dev/tcp/$postgres_host/$postgres_port" && builtin exec 3>&-) 2>/dev/null; do
-  if (( SECONDS >= ready_deadline )); then
-    printf '%s\n' 'Postgres did not become ready before the deadline' >&2
-    exit 1
-  fi
-  sleep 1
-done
+printf '%s\n' "graph-node-entrypoint: waiting for postgres ${postgres_host}:${postgres_port}"
+if command -v wait_for >/dev/null 2>&1; then
+  wait_for "${postgres_host}:${postgres_port}" -t "$ready_timeout"
+else
+  ready_deadline=$((SECONDS + ready_timeout))
+  while ! (builtin exec 3<>"/dev/tcp/$postgres_host/$postgres_port" && builtin exec 3>&-) 2>/dev/null; do
+    if (( SECONDS >= ready_deadline )); then
+      printf '%s\n' 'Postgres did not become ready before the deadline' >&2
+      exit 1
+    fi
+    sleep 1
+  done
+fi
 
 template_file="${GRAPH_NODE_CONFIG_TEMPLATE:-/etc/graph-node/railway.toml.template}"
 config_file=""
