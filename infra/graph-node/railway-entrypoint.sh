@@ -52,13 +52,19 @@ trap cleanup EXIT
 umask 077
 config_file="$(mktemp "${TMPDIR:-/tmp}/graph-node-config.XXXXXX")"
 chmod 0600 "$config_file"
+printf '%s\n' 'graph-node-entrypoint: postgres is reachable; writing store config'
 envsubst '${DATABASE_URL}' < "$template_file" > "$config_file"
+config_bytes="$(wc -c < "$config_file" | tr -d ' ')"
+printf '%s\n' "graph-node-entrypoint: store config bytes=${config_bytes}"
 unset DATABASE_URL
 unset GRAPH_NODE_CONFIG
+export GRAPHMAN_LOG="${GRAPHMAN_LOG:-info}"
+printf '%s\n' 'graph-node-entrypoint: running graphman database migrate'
 graphman --config "$config_file" database migrate
-
+printf '%s\n' 'graph-node-entrypoint: migrate complete'
 rm -f "$config_file"
 config_file=""
 trap - EXIT
 unset DATABASE_URL GRAPH_NODE_CONFIG
+printf '%s\n' 'graph-node-entrypoint: starting graph-node'
 exec /usr/local/bin/start "$@"
