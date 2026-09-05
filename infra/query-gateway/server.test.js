@@ -390,6 +390,23 @@ test("validates tokens, production upstream policy, and canonicalization", () =>
   assert.throws(() => readConfig({ ...base, GRAPH_QUERY_GATEWAY_NEXT_TOKEN: "weak" }), /at least 32 UTF-8 bytes/);
   assert.throws(() => readConfig({ ...base, NODE_ENV: "production", GRAPH_NODE_SUBGRAPH_URL: "http://localhost:8000/graphql" }), /private graph-node query URL/);
   assert.throws(() => readConfig({ ...base, NODE_ENV: "production", GRAPH_NODE_SUBGRAPH_URL: `${base.GRAPH_NODE_SUBGRAPH_URL}?x=1` }), /query or fragment/);
+  assert.doesNotThrow(() =>
+    readConfig({
+      ...base,
+      NODE_ENV: "production",
+      GRAPH_NODE_SUBGRAPH_URL:
+        "http://graph-node-v2.railway.internal:8000/subgraphs/name/society-mainnet-v2",
+    }),
+  );
+  assert.throws(
+    () =>
+      readConfig({
+        ...base,
+        NODE_ENV: "production",
+        GRAPH_NODE_SUBGRAPH_URL: "http://graph-node-v2.railway.internal:8000/subgraphs/name/other",
+      }),
+    /private graph-node query URL/,
+  );
 
   assert.equal(getOperationName(query("Users").replaceAll("\n", " ")), "Users");
   assert.throws(() => getOperationName(query("Users").replace("    name\n", "    bio\n")), /approved persisted query/);

@@ -64,11 +64,17 @@ function validateUpstreamUrl(value, nodeEnv) {
   }
 
   if (nodeEnv === "production") {
+    const allowedHost =
+      upstreamUrl.hostname === "graph-node.railway.internal" ||
+      upstreamUrl.hostname === "graph-node-v2.railway.internal";
+    const allowedPath =
+      upstreamUrl.pathname === "/subgraphs/name/society-mainnet" ||
+      upstreamUrl.pathname === "/subgraphs/name/society-mainnet-v2";
     if (
       upstreamUrl.protocol !== "http:" ||
-      upstreamUrl.hostname !== "graph-node.railway.internal" ||
       upstreamUrl.port !== "8000" ||
-      upstreamUrl.pathname !== "/subgraphs/name/society-mainnet"
+      !allowedHost ||
+      !allowedPath
     ) {
       throw new Error("Production GRAPH_NODE_SUBGRAPH_URL must be the private graph-node query URL");
     }
