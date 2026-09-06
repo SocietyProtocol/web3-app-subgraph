@@ -5,7 +5,7 @@ const { Kind, parse, print, visit } = require("graphql");
 const { PERSISTED_DOCUMENTS } = require("./generated/registry");
 
 const MAX_REQUEST_BYTES = 128 * 1024;
-const MAX_UPSTREAM_RESPONSE_BYTES = 2 * 1024 * 1024;
+const MAX_UPSTREAM_RESPONSE_BYTES = 16 * 1024 * 1024;
 const UPSTREAM_TIMEOUT_MS = 8_000;
 const HEADER_TIMEOUT_MS = 10_000;
 const REQUEST_TIMEOUT_MS = 15_000;

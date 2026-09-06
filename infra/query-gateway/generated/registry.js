@@ -49,8 +49,8 @@ const PERSISTED_DOCUMENTS = Object.freeze({
     }),
   }),
   "Badge": Object.freeze({
-    sha256: "356dcc9ed8a721f5674c6b7234162b72f72f4f9f07ba9b894c3bdc5f57e01a9d",
-    query: "query Badge($id: ID!) {\n  badge(id: $id) {\n    id\n    name\n    description\n    isOfficial\n    isCommunity\n    uri\n    hookAddress\n    imageUrl\n    creatorAddress\n    createdAt\n    holdersCount\n    profileUser {\n      name\n    }\n    community {\n      id\n      name\n    }\n    holders {\n      id\n      name\n      bio\n      imageUrl\n    }\n    managers {\n      id\n      name\n      bio\n      imageUrl\n    }\n    minters {\n      id\n      name\n      profileUser {\n        name\n      }\n      holders {\n        id\n      }\n    }\n    burners {\n      id\n      name\n      profileUser {\n        name\n      }\n      holders {\n        id\n      }\n    }\n    transferers {\n      id\n      name\n      profileUser {\n        name\n      }\n      holders {\n        id\n      }\n    }\n  }\n}",
+    sha256: "b50710bd74ee4fc2da5754e40f70013ef591bddb7fcebf0fda711a4f2c482392",
+    query: "query Badge($id: ID!) {\n  badge(id: $id) {\n    id\n    name\n    description\n    isOfficial\n    isCommunity\n    uri\n    hookAddress\n    imageUrl\n    metadata {\n      description\n      imageUrl\n    }\n    creatorAddress\n    createdAt\n    holdersCount\n    profileUser {\n      name\n      metadata {\n        name\n      }\n    }\n    community {\n      id\n      name\n    }\n    holders {\n      id\n      name\n      bio\n      imageUrl\n      metadata {\n        name\n        bio\n        imageUrl\n      }\n    }\n    managers {\n      id\n      name\n      bio\n      imageUrl\n      metadata {\n        name\n        bio\n        imageUrl\n      }\n    }\n    minters {\n      id\n      name\n      profileUser {\n        name\n        metadata {\n          name\n        }\n      }\n      holders {\n        id\n      }\n    }\n    burners {\n      id\n      name\n      profileUser {\n        name\n        metadata {\n          name\n        }\n      }\n      holders {\n        id\n      }\n    }\n    transferers {\n      id\n      name\n      profileUser {\n        name\n        metadata {\n          name\n        }\n      }\n      holders {\n        id\n      }\n    }\n  }\n}",
     variablePolicy: Object.freeze({
       maxPayloadBytes: 4096,
       maxDepth: 4,
@@ -71,8 +71,8 @@ const PERSISTED_DOCUMENTS = Object.freeze({
     }),
   }),
   "Badges": Object.freeze({
-    sha256: "a72c8b40bc22d7008ccae6fd7f6fd27780b99f949d0f5af13d4843363ad99c04",
-    query: "query Badges($first: Int!, $skip: Int!, $orderBy: Badge_orderBy!, $orderDirection: OrderDirection!, $where: Badge_filter) {\n  badges(\n    first: $first\n    skip: $skip\n    orderBy: $orderBy\n    orderDirection: $orderDirection\n    where: $where\n  ) {\n    id\n    name\n    description\n    isOfficial\n    isCommunity\n    uri\n    imageUrl\n    creatorAddress\n    profileUser {\n      name\n    }\n    community {\n      id\n      name\n    }\n    createdBy {\n      id\n      name\n      bio\n      imageUrl\n    }\n  }\n}",
+    sha256: "a7bd965ee4de5ce7c137ae5729faa23e254a8d59e51ddefed2ea43096a00c2e6",
+    query: "query Badges($first: Int!, $skip: Int!, $orderBy: Badge_orderBy!, $orderDirection: OrderDirection!, $where: Badge_filter) {\n  badges(\n    first: $first\n    skip: $skip\n    orderBy: $orderBy\n    orderDirection: $orderDirection\n    where: $where\n  ) {\n    id\n    name\n    description\n    isOfficial\n    isCommunity\n    uri\n    imageUrl\n    metadata {\n      description\n      imageUrl\n    }\n    creatorAddress\n    profileUser {\n      name\n      metadata {\n        name\n      }\n    }\n    community {\n      id\n      name\n    }\n    createdBy {\n      id\n      name\n      bio\n      imageUrl\n      metadata {\n        name\n        bio\n        imageUrl\n      }\n    }\n  }\n}",
     variablePolicy: Object.freeze({
       maxPayloadBytes: 32768,
       maxDepth: 6,
@@ -119,8 +119,8 @@ const PERSISTED_DOCUMENTS = Object.freeze({
     }),
   }),
   "Communities": Object.freeze({
-    sha256: "923234633019cb950e7cb57b24a61dfb7da518021ad6fce99446a13dc03897de",
-    query: "query Communities($first: Int!, $skip: Int!, $orderBy: Community_orderBy!, $orderDirection: OrderDirection!, $where: Community_filter) {\n  communities(\n    first: $first\n    skip: $skip\n    orderBy: $orderBy\n    orderDirection: $orderDirection\n    where: $where\n  ) {\n    id\n    name\n    description\n    imageUrl\n    createdAt\n    tierId\n    tierName\n    tierExpiresAt\n    managerAddress\n    manager {\n      id\n      name\n      bio\n      imageUrl\n    }\n    memberCount\n  }\n}",
+    sha256: "a0be4d1aa8134c182fee1dce5901d92380c462d3629e6329eae305d62ef81e0d",
+    query: "query Communities($first: Int!, $skip: Int!, $orderBy: Community_orderBy!, $orderDirection: OrderDirection!, $where: Community_filter) {\n  communities(\n    first: $first\n    skip: $skip\n    orderBy: $orderBy\n    orderDirection: $orderDirection\n    where: $where\n  ) {\n    id\n    name\n    description\n    imageUrl\n    metadata {\n      imageUrl\n      description\n    }\n    createdAt\n    tierId\n    tierName\n    tierExpiresAt\n    managerAddress\n    manager {\n      id\n      name\n      bio\n      imageUrl\n      metadata {\n        name\n        bio\n        imageUrl\n      }\n    }\n    memberCount\n  }\n}",
     variablePolicy: Object.freeze({
       maxPayloadBytes: 32768,
       maxDepth: 7,
@@ -167,8 +167,8 @@ const PERSISTED_DOCUMENTS = Object.freeze({
     }),
   }),
   "Community": Object.freeze({
-    sha256: "13875863b74b798ad60aee83768cd9f092531a02f0e4fae8e04e1069317d21ab",
-    query: "query Community($id: ID!) {\n  community(id: $id) {\n    id\n    name\n    description\n    imageUrl\n    createdAt\n    tierId\n    tierName\n    tierExpiresAt\n    managerAddress\n    manager {\n      id\n      name\n      bio\n      imageUrl\n    }\n    managerBadge {\n      id\n      name\n      imageUrl\n      uri\n    }\n    assistantBadge {\n      id\n      name\n      imageUrl\n      uri\n    }\n    memberBadge {\n      id\n      name\n      imageUrl\n      uri\n    }\n    memberCount\n    badges(first: 1000) {\n      id\n      name\n      imageUrl\n      isOfficial\n      isCommunity\n      holdersCount\n    }\n  }\n}",
+    sha256: "d166b6548ce3e1ea13921f90f020aeb66f1c3c39fada1792487a5b2f7dacd593",
+    query: "query Community($id: ID!) {\n  community(id: $id) {\n    id\n    name\n    description\n    imageUrl\n    metadata {\n      imageUrl\n      description\n    }\n    createdAt\n    tierId\n    tierName\n    tierExpiresAt\n    managerAddress\n    manager {\n      id\n      name\n      bio\n      imageUrl\n      metadata {\n        name\n        bio\n        imageUrl\n      }\n    }\n    managerBadge {\n      id\n      name\n      imageUrl\n      uri\n      metadata {\n        imageUrl\n      }\n    }\n    assistantBadge {\n      id\n      name\n      imageUrl\n      uri\n      metadata {\n        imageUrl\n      }\n    }\n    memberBadge {\n      id\n      name\n      imageUrl\n      uri\n      metadata {\n        imageUrl\n      }\n    }\n    memberCount\n    badges(first: 1000) {\n      id\n      name\n      imageUrl\n      metadata {\n        imageUrl\n      }\n      isOfficial\n      isCommunity\n      holdersCount\n    }\n  }\n}",
     variablePolicy: Object.freeze({
       maxPayloadBytes: 4096,
       maxDepth: 4,
@@ -189,8 +189,8 @@ const PERSISTED_DOCUMENTS = Object.freeze({
     }),
   }),
   "CommunityActivities": Object.freeze({
-    sha256: "e44c108bb51aa4d6aaf38ca0dc373d7b9dc37dcfc959a3bec02c274b2c21979e",
-    query: "query CommunityActivities($communityId: String!, $first: Int!, $skip: Int!) {\n  communityActivityEvents(\n    where: {community: $communityId}\n    orderBy: timestamp\n    orderDirection: desc\n    first: $first\n    skip: $skip\n  ) {\n    __typename\n    id\n    timestamp\n    txHash\n    ... on MemberJoinedActivity {\n      user {\n        id\n        name\n        imageUrl\n      }\n    }\n    ... on MemberLeftActivity {\n      user {\n        id\n        name\n        imageUrl\n      }\n    }\n    ... on BadgeMintedActivity {\n      badge {\n        id\n        name\n      }\n      user {\n        id\n        name\n        imageUrl\n      }\n    }\n    ... on MemberTransferredActivity {\n      fromUser {\n        id\n        name\n        imageUrl\n      }\n      toUser {\n        id\n        name\n        imageUrl\n      }\n    }\n    ... on ManagerChangedActivity {\n      fromManager {\n        id\n        name\n        imageUrl\n      }\n      toManager {\n        id\n        name\n        imageUrl\n      }\n    }\n    ... on CommunityBadgeLinkedActivity {\n      badge {\n        id\n        name\n      }\n    }\n    ... on BadgeBurnedActivity {\n      badge {\n        id\n        name\n      }\n      user {\n        id\n        name\n        imageUrl\n      }\n    }\n    ... on CommunityTierGrantedActivity {\n      tierId\n      tierName\n      tierExpiresAt\n    }\n    ... on CommunityTierRevokedActivity {\n      previousTierId\n      previousTierName\n    }\n  }\n}",
+    sha256: "da5a8a29eb49975df813831e360d542577ea3e0b4822806ccec74522cc1159ce",
+    query: "query CommunityActivities($communityId: String!, $first: Int!, $skip: Int!) {\n  communityActivityEvents(\n    where: {community: $communityId}\n    orderBy: timestamp\n    orderDirection: desc\n    first: $first\n    skip: $skip\n  ) {\n    __typename\n    id\n    timestamp\n    txHash\n    ... on MemberJoinedActivity {\n      user {\n        id\n        name\n        imageUrl\n        metadata {\n          name\n          imageUrl\n        }\n      }\n    }\n    ... on MemberLeftActivity {\n      user {\n        id\n        name\n        imageUrl\n        metadata {\n          name\n          imageUrl\n        }\n      }\n    }\n    ... on BadgeMintedActivity {\n      badge {\n        id\n        name\n      }\n      user {\n        id\n        name\n        imageUrl\n        metadata {\n          name\n          imageUrl\n        }\n      }\n    }\n    ... on MemberTransferredActivity {\n      fromUser {\n        id\n        name\n        imageUrl\n        metadata {\n          name\n          imageUrl\n        }\n      }\n      toUser {\n        id\n        name\n        imageUrl\n        metadata {\n          name\n          imageUrl\n        }\n      }\n    }\n    ... on ManagerChangedActivity {\n      fromManager {\n        id\n        name\n        imageUrl\n        metadata {\n          name\n          imageUrl\n        }\n      }\n      toManager {\n        id\n        name\n        imageUrl\n        metadata {\n          name\n          imageUrl\n        }\n      }\n    }\n    ... on CommunityBadgeLinkedActivity {\n      badge {\n        id\n        name\n      }\n    }\n    ... on BadgeBurnedActivity {\n      badge {\n        id\n        name\n      }\n      user {\n        id\n        name\n        imageUrl\n        metadata {\n          name\n          imageUrl\n        }\n      }\n    }\n    ... on CommunityTierGrantedActivity {\n      tierId\n      tierName\n      tierExpiresAt\n    }\n    ... on CommunityTierRevokedActivity {\n      previousTierId\n      previousTierName\n    }\n  }\n}",
     variablePolicy: Object.freeze({
       maxPayloadBytes: 8192,
       maxDepth: 3,
@@ -225,8 +225,8 @@ const PERSISTED_DOCUMENTS = Object.freeze({
     }),
   }),
   "CommunityMembers": Object.freeze({
-    sha256: "87ad0c567edfebf3f4f6621bfdf22a4941218c6aa0abd6dd41151fb3f74f1e45",
-    query: "query CommunityMembers($first: Int, $skip: Int, $where: CommunityMembership_filter, $orderBy: CommunityMembership_orderBy, $orderDirection: OrderDirection) {\n  communityMemberships(\n    first: $first\n    skip: $skip\n    orderBy: $orderBy\n    orderDirection: $orderDirection\n    where: $where\n  ) {\n    id\n    joinActivity {\n      id\n      timestamp\n    }\n    user {\n      id\n      name\n      bio\n      imageUrl\n    }\n  }\n}",
+    sha256: "5e00974fb08eeecaa99abdddd1c4213946446e3bbbb59949ff1c558f06f52bcb",
+    query: "query CommunityMembers($first: Int, $skip: Int, $where: CommunityMembership_filter, $orderBy: CommunityMembership_orderBy, $orderDirection: OrderDirection) {\n  communityMemberships(\n    first: $first\n    skip: $skip\n    orderBy: $orderBy\n    orderDirection: $orderDirection\n    where: $where\n  ) {\n    id\n    joinActivity {\n      id\n      timestamp\n    }\n    user {\n      id\n      name\n      bio\n      imageUrl\n      metadata {\n        name\n        bio\n        imageUrl\n      }\n    }\n  }\n}",
     variablePolicy: Object.freeze({
       maxPayloadBytes: 24576,
       maxDepth: 6,
@@ -341,8 +341,8 @@ const PERSISTED_DOCUMENTS = Object.freeze({
     }),
   }),
   "User": Object.freeze({
-    sha256: "296d507d035cad61fe3f04ec27a5f8c7e88918dc3eb1d981298dd2acc5319b7d",
-    query: "query User($id: ID!) {\n  user(id: $id) {\n    id\n    name\n    bio\n    imageUrl\n    communities(first: 1000) {\n      id\n    }\n    profile {\n      id\n    }\n    invitedBy {\n      id\n      name\n      bio\n      imageUrl\n    }\n    badges(first: 1000, where: {isProfile: false}) {\n      id\n      name\n      description\n      isOfficial\n      isCommunity\n      uri\n      hookAddress\n      imageUrl\n      creatorAddress\n      createdAt\n      holdersCount\n      community {\n        id\n        name\n      }\n      createdBy {\n        id\n        name\n        bio\n        imageUrl\n      }\n    }\n    managedBadges(first: 1000, where: {isProfile: false}) {\n      id\n      name\n      description\n      isOfficial\n      isCommunity\n      uri\n      hookAddress\n      imageUrl\n      creatorAddress\n      createdAt\n      holdersCount\n      createdBy {\n        id\n        name\n        bio\n        imageUrl\n      }\n    }\n  }\n}",
+    sha256: "7bcb0b7e6255c788c1b783f214fc07cae519d1904ee48a9b264e62f515a5f98b",
+    query: "query User($id: ID!) {\n  user(id: $id) {\n    id\n    name\n    bio\n    imageUrl\n    metadata {\n      name\n      bio\n      imageUrl\n    }\n    communities(first: 1000) {\n      id\n    }\n    profile {\n      id\n    }\n    invitedBy {\n      id\n      name\n      bio\n      imageUrl\n      metadata {\n        name\n        bio\n        imageUrl\n      }\n    }\n    badges(first: 1000, where: {isProfile: false}) {\n      id\n      name\n      description\n      isOfficial\n      isCommunity\n      uri\n      hookAddress\n      imageUrl\n      metadata {\n        description\n        imageUrl\n      }\n      creatorAddress\n      createdAt\n      holdersCount\n      community {\n        id\n        name\n      }\n      createdBy {\n        id\n        name\n        bio\n        imageUrl\n        metadata {\n          name\n          bio\n          imageUrl\n        }\n      }\n    }\n    managedBadges(first: 1000, where: {isProfile: false}) {\n      id\n      name\n      description\n      isOfficial\n      isCommunity\n      uri\n      hookAddress\n      imageUrl\n      metadata {\n        description\n        imageUrl\n      }\n      creatorAddress\n      createdAt\n      holdersCount\n      createdBy {\n        id\n        name\n        bio\n        imageUrl\n        metadata {\n          name\n          bio\n          imageUrl\n        }\n      }\n    }\n  }\n}",
     variablePolicy: Object.freeze({
       maxPayloadBytes: 4096,
       maxDepth: 4,
@@ -363,8 +363,8 @@ const PERSISTED_DOCUMENTS = Object.freeze({
     }),
   }),
   "Users": Object.freeze({
-    sha256: "20682ded53e8e35f6dfe2f420bae9b4ad773a31b1fdbbeef8bda6c75148ab82a",
-    query: "query Users($first: Int!, $skip: Int!, $orderBy: User_orderBy!, $orderDirection: OrderDirection!, $where: User_filter) {\n  users(\n    first: $first\n    skip: $skip\n    orderBy: $orderBy\n    orderDirection: $orderDirection\n    where: $where\n  ) {\n    id\n    name\n    bio\n    imageUrl\n    profile {\n      id\n    }\n  }\n}",
+    sha256: "872dbcc5671c21bbac7219d1d1a0dad4759260953acb408b95928197043c5f2b",
+    query: "query Users($first: Int!, $skip: Int!, $orderBy: User_orderBy!, $orderDirection: OrderDirection!, $where: User_filter) {\n  users(\n    first: $first\n    skip: $skip\n    orderBy: $orderBy\n    orderDirection: $orderDirection\n    where: $where\n  ) {\n    id\n    name\n    bio\n    imageUrl\n    metadata {\n      name\n      bio\n      imageUrl\n    }\n    profile {\n      id\n    }\n  }\n}",
     variablePolicy: Object.freeze({
       maxPayloadBytes: 32768,
       maxDepth: 6,
@@ -373,7 +373,7 @@ const PERSISTED_DOCUMENTS = Object.freeze({
       maxNumericValue: 10000000000,
       maxNodes: 512,
       maxObjectKeys: 32,
-      allowedKeys: Object.freeze(["and","or","name_contains_nocase","id","profile_not"]),
+      allowedKeys: Object.freeze(["and","or","name_contains_nocase","id","profile_not","metadata_"]),
       variables: Object.freeze({
       "first": Object.freeze({
         type: "Int!",
@@ -405,7 +405,7 @@ const PERSISTED_DOCUMENTS = Object.freeze({
         type: "User_filter",
         required: false,
         kind: "filter",
-        allowedKeys: Object.freeze(["and","or","name_contains_nocase","id","profile_not"]),
+        allowedKeys: Object.freeze(["and","or","name_contains_nocase","id","profile_not","metadata_"]),
       }),
       }),
     }),
