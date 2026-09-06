@@ -119,7 +119,7 @@ Network configurations are defined in [networks.json](networks.json). Each netwo
 
 The first current-contracts-only mainnet manifest contains exactly these sources:
 
-- `SocietyProtocolBadges`: `0x2313C0cDdc233c92d16c2cfE17DF5fDCcE556763`, from block `25128949`
+- `SocietyProtocolBadges`: `0x2313C0cDdc233c92d16c2cfE17DF5fDCcE556763`, from block `25099621`
 - `CommunityRegistry`: `0xEa008f15E1454C79D6AA7B95Dd3E1d39Ba32EB76`, from block `25102724`
 - `EasyAuction`: `0x0b7fFc1f4AD541A4Ed16b40D8c37f0929158D101`, from block `12135186`
 
@@ -166,7 +166,7 @@ selected addresses and blocks and verifies that the disabled VIP source was omit
 
 ```bash
 yarn build:mainnet
-node -e 'const fs=require("fs"); const m=fs.readFileSync("subgraph.yaml","utf8"); const expected=["network: mainnet","name: SocietyProtocolBadges","address: \"0x2313C0cDdc233c92d16c2cfE17DF5fDCcE556763\"","startBlock: 25128949","name: CommunityRegistry","address: \"0xEa008f15E1454C79D6AA7B95Dd3E1d39Ba32EB76\"","startBlock: 25102724","name: EasyAuction","address: \"0x0b7fFc1f4AD541A4Ed16b40D8c37f0929158D101\"","startBlock: 12135186"]; for (const value of expected) if (!m.includes(value)) throw new Error(`Missing manifest value: ${value}`); if (m.includes("name: SocietyVipManager")) throw new Error("VIP source must be omitted"); console.log("mainnet manifest inspection passed");'
+node -e 'const fs=require("fs"); const m=fs.readFileSync("subgraph.yaml","utf8"); const expected=["network: mainnet","name: SocietyProtocolBadges","address: \"0x2313C0cDdc233c92d16c2cfE17DF5fDCcE556763\"","startBlock: 25099621","name: CommunityRegistry","address: \"0xEa008f15E1454C79D6AA7B95Dd3E1d39Ba32EB76\"","startBlock: 25102724","name: EasyAuction","address: \"0x0b7fFc1f4AD541A4Ed16b40D8c37f0929158D101\"","startBlock: 12135186"]; for (const value of expected) if (!m.includes(value)) throw new Error(`Missing manifest value: ${value}`); if (m.includes("name: SocietyVipManager")) throw new Error("VIP source must be omitted"); console.log("mainnet manifest inspection passed");'
 ```
 
 The manifest is generated and ignored locally; inspect it before every Railway

@@ -4,7 +4,7 @@
     "chainId": 1,
     "SocietyProtocolBadges": {
       "address": "0x2313C0cDdc233c92d16c2cfE17DF5fDCcE556763",
-      "startBlock": 25128949
+      "startBlock": 25099621
     },
     "EasyAuction": {
       "address": "0x0b7fFc1f4AD541A4Ed16b40D8c37f0929158D101",
