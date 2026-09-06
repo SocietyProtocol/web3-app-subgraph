@@ -54,7 +54,7 @@ not invent or claim a digest for the base image.
 ## Request policy
 
 The gateway enforces a 128 KiB request limit and an 8 KiB query-string byte limit.
-The largest current persisted document is `Users` at 1,884 UTF-8 bytes; 8 KiB is
+The largest current persisted document is `CommunityActivities` at 1,413 UTF-8 bytes; 8 KiB is
 intentionally above that measured basis while remaining well below the request
 cap. GraphQL parsing uses the standard parser with a strict 512-token ceiling.
 Only the 13 canonical documents in `generated/registry.js` are accepted: each
