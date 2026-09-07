@@ -15,6 +15,12 @@ function stringField(object: TypedMap<string, JSONValue>, key: string): string |
     : null;
 }
 
+function publicImageUrl(value: string | null): string | null {
+  if (value == null) return null;
+  if (value.startsWith("data:")) return null;
+  return value;
+}
+
 /** File-source handler: it only creates the immutable Metadata entity. */
 export function handleMetadata(content: Bytes): void {
   const identifier = dataSource.stringParam();
@@ -27,7 +33,7 @@ export function handleMetadata(content: Bytes): void {
   const metadata = new Metadata(identifier);
   metadata.name = stringField(object, "name");
   metadata.bio = stringField(object, "bio");
-  metadata.imageUrl = stringField(object, "imageUrl");
+  metadata.imageUrl = publicImageUrl(stringField(object, "imageUrl"));
   metadata.description = stringField(object, "description");
   metadata.save();
 }

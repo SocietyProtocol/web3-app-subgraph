@@ -121,6 +121,15 @@ test("forwards the canonical persisted query without credentials and sanitizes e
   assert.equal(result.headers.get("set-cookie"), null);
 });
 
+test("strips data-URI photos from upstream GraphQL data", async () => {
+  const { stripDataUriImages } = require("./server");
+  const stripped = stripDataUriImages({
+    users: [{ imageUrl: "data:image/jpeg;base64,abc", name: "Ada" }],
+  });
+  assert.equal(stripped.users[0].imageUrl, null);
+  assert.equal(stripped.users[0].name, "Ada");
+});
+
 test("accepts only the public health route and JSON POST GraphQL requests", async () => {
   let upstreamCalls = 0;
   const baseUrl = await makeGateway((_request, response) => {

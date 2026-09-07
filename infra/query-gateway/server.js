@@ -347,6 +347,24 @@ function sanitizeGraphQLErrors(errors) {
   return errors.map(() => ({ message: "Upstream GraphQL error" }));
 }
 
+function stripDataUriImages(value, depth = 0) {
+  if (depth > 12) return value;
+  if (typeof value === "string") {
+    return value.startsWith("data:image/") ? null : value;
+  }
+  if (Array.isArray(value)) {
+    return value.map((item) => stripDataUriImages(item, depth + 1));
+  }
+  if (isPlainObject(value)) {
+    const next = {};
+    for (const [key, child] of Object.entries(value)) {
+      next[key] = stripDataUriImages(child, depth + 1);
+    }
+    return next;
+  }
+  return value;
+}
+
 async function forwardQuery(payload, config, state, request, response) {
   const controller = new AbortController();
   let clientAborted = false;
@@ -387,7 +405,7 @@ async function forwardQuery(payload, config, state, request, response) {
     }
 
     const result = {};
-    if (Object.hasOwn(body, "data")) result.data = body.data;
+    if (Object.hasOwn(body, "data")) result.data = stripDataUriImages(body.data);
     if (Object.hasOwn(body, "errors")) result.errors = sanitizeGraphQLErrors(body.errors);
     return {
       status: upstreamResponse.status >= 200 && upstreamResponse.status <= 599 ? upstreamResponse.status : 502,
@@ -573,6 +591,7 @@ module.exports = {
   SHUTDOWN_TIMEOUT_MS,
   UPSTREAM_TIMEOUT_MS,
   createGatewayServer,
+  stripDataUriImages,
   getOperationName: (query) => canonicalizeApprovedDocument(query).operationName,
   readConfig,
   shutdownGatewayServer,

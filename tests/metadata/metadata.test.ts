@@ -59,6 +59,21 @@ describe("Metadata file source", () => {
     assert.assertNull(canonicalMetadataIdentifier("https://ipfs.io/ipfs/bafy-not-a-cid"));
   });
 
+  test("drops inlined data-URI photos so Graph stays small", () => {
+    dataSourceMock.setAddress(CID);
+    handleMetadata(
+      Bytes.fromUTF8(
+        '{"name":"Alice","imageUrl":"data:image/png;base64,abc"}',
+      ),
+    );
+
+    assert.entityCount("Metadata", 1);
+    assert.fieldEquals("Metadata", CID, "name", "Alice");
+    const metadata = Metadata.load(CID);
+    assert.assertNotNull(metadata);
+    assert.assertNull(metadata!.imageUrl);
+  });
+
   test("creates scalar fields from valid object JSON", () => {
     dataSourceMock.setAddress(CID);
     handleMetadata(Bytes.fromUTF8('{"name":"Alice","bio":"Builder","imageUrl":"image","description":"About"}'));
