@@ -3,6 +3,12 @@ const { createHash, timingSafeEqual } = require("node:crypto");
 const { Kind, parse, print, visit } = require("graphql");
 
 const { PERSISTED_DOCUMENTS } = require("./generated/registry");
+let IMAGE_CIDS = {};
+try {
+  IMAGE_CIDS = require("./generated/image-cids.json");
+} catch {
+  IMAGE_CIDS = {};
+}
 
 const MAX_REQUEST_BYTES = 128 * 1024;
 const MAX_UPSTREAM_RESPONSE_BYTES = 16 * 1024 * 1024;
@@ -350,7 +356,9 @@ function sanitizeGraphQLErrors(errors) {
 function stripDataUriImages(value, depth = 0) {
   if (depth > 12) return value;
   if (typeof value === "string") {
-    return value.startsWith("data:image/") ? null : value;
+    if (!value.startsWith("data:image/")) return value;
+    const key = createHash("sha256").update(value, "utf8").digest("hex");
+    return IMAGE_CIDS[key] || null;
   }
   if (Array.isArray(value)) {
     return value.map((item) => stripDataUriImages(item, depth + 1));
