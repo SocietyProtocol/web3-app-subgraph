@@ -59,6 +59,18 @@ describe("Metadata file source", () => {
     assert.assertNull(canonicalMetadataIdentifier("https://ipfs.io/ipfs/bafy-not-a-cid"));
   });
 
+  test("accepts Filebase CIDv0 Qm roots used by live profile URIs", () => {
+    const qm = "QmbkEAHqF82urRidwJZCScB8hrvi21dMJYHwhrZUqZ74Vc";
+    assert.stringEquals(
+      canonicalMetadataIdentifier(`https://ipfs.filebase.io/ipfs/${qm}`)!,
+      qm,
+    );
+    assert.stringEquals(
+      canonicalMetadataIdentifier(`ipfs://${qm}`)!,
+      qm,
+    );
+  });
+
   test("drops inlined data-URI photos so Graph stays small", () => {
     dataSourceMock.setAddress(CID);
     handleMetadata(

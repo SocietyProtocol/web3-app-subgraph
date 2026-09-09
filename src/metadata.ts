@@ -16,9 +16,10 @@ function stringField(object: TypedMap<string, JSONValue>, key: string): string |
 }
 
 function publicImageUrl(value: string | null): string | null {
-  if (value == null) return null;
-  if (value.startsWith("data:")) return null;
-  return value;
+  if (value === null) return null;
+  const text = value as string;
+  if (text.startsWith("data:")) return null;
+  return text;
 }
 
 /** File-source handler: it only creates the immutable Metadata entity. */

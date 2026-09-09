@@ -16,6 +16,39 @@ function isSafeGatewayHost(host: string): boolean {
   return true;
 }
 
+function isCidV1Root(root: string): boolean {
+  if (root.length != 59 || (!root.startsWith("bafybei") && !root.startsWith("bafkrei"))) {
+    return false;
+  }
+  for (let i = 4; i < root.length; i++) {
+    const code = root.charCodeAt(i);
+    const validBase32 = (code >= 97 && code <= 122) || (code >= 50 && code <= 55);
+    if (!validBase32) return false;
+  }
+  const final = root.charCodeAt(root.length - 1);
+  return (
+    final == 97 || final == 101 || final == 105 || final == 109 ||
+    final == 113 || final == 117 || final == 121 || final == 52
+  );
+}
+
+function isCidV0Root(root: string): boolean {
+  if (root.length != 46 || !root.startsWith("Qm")) return false;
+  for (let i = 0; i < root.length; i++) {
+    const code = root.charCodeAt(i);
+    const isDigit = code >= 49 && code <= 57;
+    const isUpper =
+      (code >= 65 && code <= 72) ||
+      (code >= 74 && code <= 78) ||
+      (code >= 80 && code <= 90);
+    const isLower =
+      (code >= 97 && code <= 107) ||
+      (code >= 109 && code <= 122);
+    if (!isDigit && !isUpper && !isLower) return false;
+  }
+  return true;
+}
+
 /**
  * Return the inventory-backed Metadata identity for an observed URI.
  *
@@ -65,22 +98,11 @@ export function canonicalMetadataIdentifier(uri: string | null): string | null {
     return null;
   }
 
-  // CIDv1 base32 roots observed by the inventory are bafy*/bafk* values.
   const parts = identifier.split("/");
   const root = parts[0];
-  if (root.length != 59 || (!root.startsWith("bafybei") && !root.startsWith("bafkrei"))) {
+  if (!isCidV1Root(root) && !isCidV0Root(root)) {
     return null;
   }
-  for (let i = 4; i < root.length; i++) {
-    const code = root.charCodeAt(i);
-    const validBase32 = (code >= 97 && code <= 122) || (code >= 50 && code <= 55);
-    if (!validBase32) return null;
-  }
-  const final = root.charCodeAt(root.length - 1);
-  if (
-    final != 97 && final != 101 && final != 105 && final != 109 &&
-    final != 113 && final != 117 && final != 121 && final != 52
-  ) return null;
 
   if (identifier.startsWith("/") || identifier.endsWith("/")) return null;
   for (let i = 1; i < parts.length; i++) {
