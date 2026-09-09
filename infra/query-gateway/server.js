@@ -9,6 +9,12 @@ try {
 } catch {
   IMAGE_CIDS = {};
 }
+let IMAGE_ENTITY_CIDS = {};
+try {
+  IMAGE_ENTITY_CIDS = require("./generated/image-entity-cids.json");
+} catch {
+  IMAGE_ENTITY_CIDS = {};
+}
 
 const MAX_REQUEST_BYTES = 128 * 1024;
 const MAX_UPSTREAM_RESPONSE_BYTES = 16 * 1024 * 1024;
@@ -353,6 +359,19 @@ function sanitizeGraphQLErrors(errors) {
   return errors.map(() => ({ message: "Upstream GraphQL error" }));
 }
 
+function isBlankImage(value) {
+  return (
+    value == null ||
+    value === "" ||
+    (typeof value === "string" && value.startsWith("data:image/"))
+  );
+}
+
+function mappedEntityImage(id) {
+  if (typeof id !== "string" || id.length === 0) return null;
+  return IMAGE_ENTITY_CIDS[id] || IMAGE_ENTITY_CIDS[id.toLowerCase()] || null;
+}
+
 function stripDataUriImages(value, depth = 0) {
   if (depth > 12) return value;
   if (typeof value === "string") {
@@ -367,6 +386,21 @@ function stripDataUriImages(value, depth = 0) {
     const next = {};
     for (const [key, child] of Object.entries(value)) {
       next[key] = stripDataUriImages(child, depth + 1);
+    }
+    if (Object.hasOwn(next, "imageUrl")) {
+      const mapped = mappedEntityImage(next.id);
+      if (mapped && isBlankImage(next.imageUrl)) {
+        next.imageUrl = mapped;
+      }
+    }
+    if (
+      isPlainObject(next.metadata) &&
+      Object.hasOwn(next.metadata, "imageUrl") &&
+      isBlankImage(next.metadata.imageUrl) &&
+      typeof next.imageUrl === "string" &&
+      next.imageUrl.startsWith("http")
+    ) {
+      next.metadata.imageUrl = next.imageUrl;
     }
     return next;
   }

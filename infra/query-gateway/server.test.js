@@ -130,6 +130,27 @@ test("strips data-URI photos from upstream GraphQL data", async () => {
   assert.equal(stripped.users[0].name, "Ada");
 });
 
+test("fills null photos from the entity id map", async () => {
+  const { stripDataUriImages } = require("./server");
+  const entityCids = require("./generated/image-entity-cids.json");
+  const entityId = Object.keys(entityCids).find((key) => key.startsWith("0x"));
+  assert.ok(entityId);
+  const stripped = stripDataUriImages({
+    users: [
+      {
+        id: entityId,
+        name: "Ada",
+        imageUrl: null,
+        metadata: { name: "Ada", imageUrl: null },
+        profile: { id: "48" },
+      },
+    ],
+  });
+  assert.equal(stripped.users[0].imageUrl, entityCids[entityId]);
+  assert.equal(stripped.users[0].metadata.imageUrl, entityCids[entityId]);
+  assert.deepEqual(stripped.users[0].profile, { id: "48" });
+});
+
 test("accepts only the public health route and JSON POST GraphQL requests", async () => {
   let upstreamCalls = 0;
   const baseUrl = await makeGateway((_request, response) => {
