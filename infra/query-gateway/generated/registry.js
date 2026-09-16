@@ -373,7 +373,7 @@ const PERSISTED_DOCUMENTS = Object.freeze({
       maxNumericValue: 10000000000,
       maxNodes: 512,
       maxObjectKeys: 32,
-      allowedKeys: Object.freeze(["and","or","name_contains_nocase","id","profile_not","metadata_"]),
+      allowedKeys: Object.freeze(["and","or","name_contains_nocase","id","profile_not","metadata_","protocolRoles_contains","protocolRoleCount"]),
       variables: Object.freeze({
       "first": Object.freeze({
         type: "Int!",
@@ -405,7 +405,7 @@ const PERSISTED_DOCUMENTS = Object.freeze({
         type: "User_filter",
         required: false,
         kind: "filter",
-        allowedKeys: Object.freeze(["and","or","name_contains_nocase","id","profile_not","metadata_"]),
+        allowedKeys: Object.freeze(["and","or","name_contains_nocase","id","profile_not","metadata_","protocolRoles_contains","protocolRoleCount"]),
       }),
       }),
     }),

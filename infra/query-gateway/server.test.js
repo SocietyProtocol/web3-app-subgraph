@@ -121,6 +121,38 @@ test("forwards the canonical persisted query without credentials and sanitizes e
   assert.equal(result.headers.get("set-cookie"), null);
 });
 
+test("accepts Users protocol role filters", async () => {
+  let received;
+  const baseUrl = await makeGateway(async (upstreamRequest, response) => {
+    received = await new Promise((resolve) => {
+      let body = "";
+      upstreamRequest.on("data", (chunk) => (body += chunk));
+      upstreamRequest.on("end", () => resolve(JSON.parse(body)));
+    });
+    response.end(JSON.stringify({ data: { users: [] } }));
+  });
+
+  const result = await request(baseUrl, {
+    headers: { "content-type": "application/json" },
+    body: graphBody("Users", {
+      first: 5,
+      skip: 0,
+      orderBy: "profile__createdAt",
+      orderDirection: "desc",
+      where: {
+        and: [
+          { profile_not: null },
+          { protocolRoles_contains: ["GOVERNOR"] },
+        ],
+      },
+    }),
+  });
+  assert.equal(result.status, 200);
+  assert.deepEqual(received.variables.where.and[1], {
+    protocolRoles_contains: ["GOVERNOR"],
+  });
+});
+
 test("strips data-URI photos from upstream GraphQL data", async () => {
   const { stripDataUriImages } = require("./server");
   const stripped = stripDataUriImages({
