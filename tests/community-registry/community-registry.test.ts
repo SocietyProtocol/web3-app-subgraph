@@ -37,6 +37,7 @@ function createAndSaveBadge(
   badge.isOfficial = false;
   badge.isCommunity = isCommunity;
   badge.isProfile = false;
+  badge.protocolRole = "NONE";
   badge.hookAddress = new Bytes(0);
   badge.createdAt = BigInt.fromI32(1683094249);
   badge.uri = uri;

@@ -19,6 +19,7 @@ import {
   handleTransferSingle,
   handleURI,
 } from "../../src/society-protocol-badges";
+import { protocolRoleFromBadgeName } from "../../src/protocol-roles";
 import {
   createBadgeCreatedEvent,
   createBadgeModifiedEvent,
@@ -48,6 +49,7 @@ function createAndSaveBadge(
   badge.isOfficial = isOfficial;
   badge.isCommunity = false;
   badge.isProfile = false;
+  badge.protocolRole = protocolRoleFromBadgeName(name);
   badge.hookAddress = new Bytes(0);
   badge.createdAt = BigInt.fromI32(1683094249);
   badge.uri = uri;
@@ -68,6 +70,8 @@ function createAndSaveBadge(
 function createAndSaveUser(address: Address, badges: string[]): User {
   const user = new User(address.toHexString());
   user.badges = badges;
+  user.protocolRoles = [];
+  user.protocolRoleCount = 0;
   user.managedBadges = [];
   user.managedCommunities = [];
   user.communities = [];
@@ -1105,6 +1109,110 @@ describe("Society Protocol Badges Mappings", () => {
       assert.notInStore("Badge", "999");
 
       log.success("No badge created when BadgeModified targets unknown id", []);
+    });
+  });
+
+  describe("protocol roles", () => {
+    test("Should classify Governor and ignore VIP", () => {
+      handleBadgeCreated(
+        createBadgeCreatedEvent(
+          BigInt.fromI32(13),
+          "Governor",
+          true,
+          BigInt.fromI32(1683094249),
+        ),
+      );
+      handleBadgeCreated(
+        createBadgeCreatedEvent(
+          BigInt.fromI32(16),
+          "Gold VIP",
+          true,
+          BigInt.fromI32(1683094249),
+        ),
+      );
+
+      assert.fieldEquals("Badge", "13", "protocolRole", "GOVERNOR");
+      assert.fieldEquals("Badge", "16", "protocolRole", "NONE");
+    });
+
+    test("Should add and remove protocol roles on mint and burn", () => {
+      createAndSaveBadge("13", "Governor", true);
+      createAndSaveBadge("24", "Advisor", true);
+      const userAddress = Address.fromString(
+        "0x5eA1474CeFA1ea5986327F97932B587deD802CF7",
+      );
+      createAndSaveUser(userAddress, new Array());
+
+      handleTransferSingle(
+        createTransferSingleEvent(
+          Address.fromString(ZERO_ADDRESS),
+          userAddress,
+          BigInt.fromI32(13),
+          BigInt.fromI32(1),
+        ),
+      );
+      handleTransferSingle(
+        createTransferSingleEvent(
+          Address.fromString(ZERO_ADDRESS),
+          userAddress,
+          BigInt.fromI32(24),
+          BigInt.fromI32(1),
+        ),
+      );
+
+      let user = User.load(userAddress.toHexString());
+      assert.assertNotNull(user);
+      assert.i32Equals(user!.protocolRoleCount, 2);
+      assert.i32Equals(user!.protocolRoles.length, 2);
+
+      handleTransferSingle(
+        createTransferSingleEvent(
+          userAddress,
+          Address.fromString(ZERO_ADDRESS),
+          BigInt.fromI32(13),
+          BigInt.fromI32(1),
+        ),
+      );
+
+      user = User.load(userAddress.toHexString());
+      assert.assertNotNull(user);
+      assert.i32Equals(user!.protocolRoleCount, 1);
+      assert.stringEquals(user!.protocolRoles[0], "ADVISOR");
+
+      handleTransferSingle(
+        createTransferSingleEvent(
+          userAddress,
+          Address.fromString(ZERO_ADDRESS),
+          BigInt.fromI32(24),
+          BigInt.fromI32(1),
+        ),
+      );
+
+      user = User.load(userAddress.toHexString());
+      assert.assertNotNull(user);
+      assert.i32Equals(user!.protocolRoleCount, 0);
+      assert.i32Equals(user!.protocolRoles.length, 0);
+    });
+
+    test("Should not treat a profile mint as a protocol role", () => {
+      createAndSaveBadge("1", "Profile", false);
+      const userAddress = Address.fromString(
+        "0x5eA1474CeFA1ea5986327F97932B587deD802CF7",
+      );
+      createAndSaveUser(userAddress, new Array());
+
+      handleTransferSingle(
+        createTransferSingleEvent(
+          Address.fromString(ZERO_ADDRESS),
+          userAddress,
+          BigInt.fromI32(1),
+          BigInt.fromI32(1),
+        ),
+      );
+
+      const user = User.load(userAddress.toHexString());
+      assert.assertNotNull(user);
+      assert.i32Equals(user!.protocolRoleCount, 0);
     });
   });
 });

@@ -14,6 +14,7 @@ export function findOrCreateBadge(badgeId: string, creator: string): Badge {
     badge.isOfficial = false;
     badge.isCommunity = false;
     badge.isProfile = false;
+    badge.protocolRole = "NONE";
     badge.hookAddress = new Bytes(0);
     badge.createdAt = BigInt.zero();
     badge.uri = "";

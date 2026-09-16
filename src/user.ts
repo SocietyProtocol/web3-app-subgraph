@@ -6,6 +6,8 @@ export const findOrCreateUser = (userId: string): User => {
   if (user == null) {
     user = new User(userId);
     user.badges = [];
+    user.protocolRoles = [];
+    user.protocolRoleCount = 0;
     user.managedBadges = [];
     user.managedCommunities = [];
     user.communities = [];

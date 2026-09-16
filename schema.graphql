@@ -1,3 +1,12 @@
+enum ProtocolRole {
+  NONE
+  GOVERNOR
+  CONTRIBUTOR
+  CORE_TEAM
+  ADVISOR
+  MODERATOR
+}
+
 type User @entity(immutable: false) {
   id: ID!
   metadata: Metadata
@@ -6,6 +15,8 @@ type User @entity(immutable: false) {
   imageUrl: String
   profile: Badge
   badges: [Badge!]!
+  protocolRoles: [ProtocolRole!]!
+  protocolRoleCount: Int!
   invitedBy: User
   invitedUsers: [User!]! @derivedFrom(field: "invitedBy")
   managedBadges: [Badge!]!
@@ -35,6 +46,7 @@ type Badge @entity(immutable: false) {
   holdersCount: BigInt!
   profileUser: User
   community: Community
+  protocolRole: ProtocolRole!
 }
 
 type Community @entity(immutable: false) {

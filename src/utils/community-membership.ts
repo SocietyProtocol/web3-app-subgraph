@@ -11,6 +11,7 @@ import {
   MemberTransferredActivity,
 } from "../../generated/schema";
 import { findOrCreateUser } from "../user";
+import { rebuildUserProtocolRoles } from "../protocol-roles";
 
 export function generateActivityId(
   txHash: Bytes,
@@ -71,6 +72,7 @@ export function mint(
   const updatedBadges = user.badges;
   updatedBadges.push(badge.id);
   user.badges = updatedBadges;
+  rebuildUserProtocolRoles(user);
   user.save();
 
   badge.holdersCount = badge.holdersCount.plus(BigInt.fromI32(1));
@@ -157,6 +159,7 @@ export function burn(
     const updatedBadges = user.badges;
     updatedBadges.splice(badgeIndex, 1);
     user.badges = updatedBadges;
+    rebuildUserProtocolRoles(user);
     user.save();
 
     badge.holdersCount = badge.holdersCount.minus(BigInt.fromI32(1));
@@ -244,6 +247,7 @@ export function transfer(
     const updatedBadges = fromUser.badges;
     updatedBadges.splice(badgeIndex, 1);
     fromUser.badges = updatedBadges;
+    rebuildUserProtocolRoles(fromUser);
     fromUser.save();
   }
 
@@ -253,6 +257,7 @@ export function transfer(
     const updatedBadges = toUser.badges;
     updatedBadges.push(badge.id);
     toUser.badges = updatedBadges;
+    rebuildUserProtocolRoles(toUser);
     toUser.save();
   }
 

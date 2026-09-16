@@ -14,6 +14,7 @@ import {
   UserInvited,
 } from "../generated/SocietyProtocolBadges/SocietyProtocolBadges";
 import { findOrCreateUser } from "./user";
+import { applyBadgeProtocolRole } from "./protocol-roles";
 import { setMetadataReference } from "./utils/metadata";
 import { findOrCreateBadge, bigIntArrayToStringArray } from "./utils/badge";
 import { mint, burn, transfer } from "./utils/community-membership";
@@ -35,6 +36,7 @@ export function handleBadgeCreated(event: BadgeCreated): void {
   badge.isOfficial = event.params.isOfficial;
   badge.isCommunity = event.params.isCommunityBadge;
   badge.isProfile = false;
+  applyBadgeProtocolRole(badge);
   badge.hookAddress = new Bytes(0);
   badge.createdAt = event.block.timestamp;
 
@@ -62,6 +64,7 @@ export function handleBadgeModified(event: BadgeModified): void {
   badge.name = event.params.name;
   badge.isOfficial = event.params.isOfficial;
   badge.isCommunity = event.params.isCommunityBadge;
+  applyBadgeProtocolRole(badge);
   badge.uri = event.params.metadataURI;
   badge.metadata = setMetadataReference(badge.uri);
   badge.imageUrl = null;

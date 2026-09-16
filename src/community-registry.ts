@@ -157,6 +157,7 @@ export function handleCommunityCreated(event: CommunityCreated): void {
     managerBadge.isOfficial = false;
     managerBadge.isCommunity = true;
     managerBadge.isProfile = false;
+    managerBadge.protocolRole = "NONE";
     managerBadge.hookAddress = new Bytes(0);
     managerBadge.creatorAddress = creatorAddress;
     managerBadge.createdAt = event.block.timestamp;

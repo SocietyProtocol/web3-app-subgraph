@@ -36,6 +36,7 @@ function createAndSaveBadge(
   badge.isOfficial = false;
   badge.isCommunity = communityId != null;
   badge.isProfile = false;
+  badge.protocolRole = "NONE";
   badge.hookAddress = new Bytes(0);
   badge.createdAt = BigInt.fromI32(1683094249);
   badge.uri = "";
@@ -59,6 +60,8 @@ function createAndSaveUser(
 ): User {
   const user = new User(address.toHexString());
   user.badges = badges;
+  user.protocolRoles = [];
+  user.protocolRoleCount = 0;
   user.managedBadges = [];
   user.managedCommunities = [];
   user.communities = communities;
