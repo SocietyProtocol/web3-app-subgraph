@@ -474,6 +474,32 @@ test("validates tokens, production upstream policy, and canonicalization", () =>
   assert.throws(() => getOperationName(query("Users").replace("    name\n", "    bio\n")), /approved persisted query/);
 });
 
+test("accepts the staging graph-node URL and rejects an unknown host", () => {
+  const base = {
+    GRAPH_NODE_SUBGRAPH_URL: "http://graph-node.railway.internal:8000/subgraphs/name/society-mainnet",
+    GRAPH_QUERY_GATEWAY_TOKEN: TEST_TOKEN,
+    PORT: "8080",
+    NODE_ENV: "production",
+  };
+  const staging = readConfig({
+    ...base,
+    GRAPH_NODE_SUBGRAPH_URL:
+      "http://graph-node-staging.railway.internal:8000/subgraphs/name/society-sepolia",
+  });
+  assert.equal(
+    staging.upstreamUrl.href,
+    "http://graph-node-staging.railway.internal:8000/subgraphs/name/society-sepolia",
+  );
+  assert.throws(
+    () =>
+      readConfig({
+        ...base,
+        GRAPH_NODE_SUBGRAPH_URL: "http://unknown.example:8000/subgraphs/name/society-sepolia",
+      }),
+    /private graph-node query URL/,
+  );
+});
+
 test("gracefully shuts down and stops accepting new requests", async () => {
   const baseUrl = await makeGateway((_request, response) => response.end(JSON.stringify({ data: {} })));
   const gateway = gatewayServers[gatewayServers.length - 1];
