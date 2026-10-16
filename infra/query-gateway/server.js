@@ -77,11 +77,15 @@ function validateUpstreamUrl(value, nodeEnv) {
 
   if (nodeEnv === "production") {
     const allowedHost =
+      upstreamUrl.hostname === "prod-graph-node" ||
+      upstreamUrl.hostname === "staging-graph-node" ||
       upstreamUrl.hostname === "graph-node.railway.internal" ||
-      upstreamUrl.hostname === "graph-node-v2.railway.internal";
+      upstreamUrl.hostname === "graph-node-v2.railway.internal" ||
+      upstreamUrl.hostname === "graph-node-staging.railway.internal";
     const allowedPath =
       upstreamUrl.pathname === "/subgraphs/name/society-mainnet" ||
-      upstreamUrl.pathname === "/subgraphs/name/society-mainnet-v2";
+      upstreamUrl.pathname === "/subgraphs/name/society-mainnet-v2" ||
+      upstreamUrl.pathname === "/subgraphs/name/society-sepolia";
     if (
       upstreamUrl.protocol !== "http:" ||
       upstreamUrl.port !== "8000" ||

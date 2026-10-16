@@ -1,4 +1,4 @@
-# Railway Graph Node bootstrap wrapper
+# Graph Node bootstrap wrapper
 
 This wrapper keeps the official `graphprotocol/graph-node:v0.45.0` image and
 startup command, but initializes a fresh Postgres schema before normal startup.
@@ -15,28 +15,20 @@ lower-case Graph Node runtime variables remain the normal runtime path:
 `postgres_host`, `postgres_port`, `postgres_user`, `postgres_pass`,
 `postgres_db`, `ipfs`, `ethereum`, and `node_id`.
 
-## Railway setup
+## AWS setup
 
-Update the existing `graph-node` service to build this repository revision with
-**Root Directory** set to `infra/graph-node`. Use the included Dockerfile; it
-inherits exactly `graphprotocol/graph-node:v0.45.0` and installs no packages.
+Build this directory with the included Dockerfile on the AWS outpost. It inherits
+`graphprotocol/graph-node:v0.45.0` and installs no packages.
 
-Add a server-only Railway variable reference on that service:
+Set `DATABASE_URL` to the local graph Postgres URL, for example
+`postgresql://graph:<password>@prod-graph-postgres:5432/graph`. Staging uses
+`staging-graph-postgres`. `DATABASE_URL` is used only during the bootstrap
+migration and is never logged. Keep PostgreSQL and Graph Node private. Public
+GraphQL access belongs at the query gateway.
 
-```text
-DATABASE_URL=${{postgres.DATABASE_URL}}
-```
-
-Retain the existing Graph Node variables, including the lower-case variables
-listed above and the current `GRAPH_LOG`/network settings. `DATABASE_URL` is used
-only during the bootstrap migration and is never logged. Keep graph-node at one
-replica on the private Railway network. PostgreSQL and Graph Node should remain
-private; public GraphQL access belongs at the protected query gateway.
-
-The migration is safe to run on every restart and is idempotent. Do not create a
-second concurrent migration job: the wrapper is the single schema-migration
-owner for this service. Railway should deploy/restart the graph-node service only
-after the Postgres service is available.
+The migration is safe to run on every restart and is idempotent. Do not run a
+second migration at the same time. Start graph-node only after its Postgres
+container is accepting connections.
 
 ## Rollback
 

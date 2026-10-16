@@ -460,6 +460,22 @@ test("validates tokens, production upstream policy, and canonicalization", () =>
         "http://graph-node-v2.railway.internal:8000/subgraphs/name/society-mainnet-v2",
     }),
   );
+  assert.doesNotThrow(() =>
+    readConfig({
+      ...base,
+      NODE_ENV: "production",
+      GRAPH_NODE_SUBGRAPH_URL:
+        "http://prod-graph-node:8000/subgraphs/name/society-mainnet-v2",
+    }),
+  );
+  assert.doesNotThrow(() =>
+    readConfig({
+      ...base,
+      NODE_ENV: "production",
+      GRAPH_NODE_SUBGRAPH_URL:
+        "http://staging-graph-node:8000/subgraphs/name/society-sepolia",
+    }),
+  );
   assert.throws(
     () =>
       readConfig({

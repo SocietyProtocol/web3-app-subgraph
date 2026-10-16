@@ -169,29 +169,22 @@ yarn build:mainnet
 node -e 'const fs=require("fs"); const m=fs.readFileSync("subgraph.yaml","utf8"); const expected=["network: mainnet","name: SocietyProtocolBadges","address: \"0x2313C0cDdc233c92d16c2cfE17DF5fDCcE556763\"","startBlock: 25099621","name: CommunityRegistry","address: \"0xEa008f15E1454C79D6AA7B95Dd3E1d39Ba32EB76\"","startBlock: 25102724","name: EasyAuction","address: \"0x0b7fFc1f4AD541A4Ed16b40D8c37f0929158D101\"","startBlock: 25099621"]; for (const value of expected) if (!m.includes(value)) throw new Error(`Missing manifest value: ${value}`); if (m.includes("name: SocietyVipManager")) throw new Error("VIP source must be omitted"); console.log("mainnet manifest inspection passed");'
 ```
 
-The manifest is generated and ignored locally; inspect it before every Railway
+The manifest is generated and ignored locally; inspect it before every AWS
 deployment and record its SHA-256 (`shasum -a 256 subgraph.yaml`) with the deploy
 job evidence.
 
-## Railway deploy job requirements
+## AWS deploy job requirements
 
-Use a short-lived deploy job in the same `outpost-graph` Railway environment as
-graph-node, Postgres, and Kubo. Its command sequence is:
+Run the deploy on the AWS outpost, in the production Docker network. Its command sequence is:
 
 ```bash
 yarn install --frozen-lockfile
 yarn build:mainnet
-graph deploy --node http://graph-node.railway.internal:8020 \
-  --ipfs http://kubo.railway.internal:5001 society-mainnet
+graph deploy --node http://prod-graph-node:8020 \
+  --ipfs http://prod-kubo:5001 society-mainnet-v2
 ```
 
-Replace the two private DNS service names if the Railway services use different
-names. The job must run inside the Railway private network; image builds must not
-depend on private service DNS. The graph-node admin port (`8020`) and Kubo API
-port (`5001`) are private job-to-service connections only and must not receive
-public Railway domains. Do not expose either port, and do not add Railway
-credentials as a repository prerequisite. Keep graph-node's query/health target
-on its configured HTTP port (`8000`) and use a protected query gateway for
+Staging uses `staging-graph-node`, `staging-kubo`, and subgraph name `society-sepolia`. The graph-node admin port (`8020`) and Kubo API port (`5001`) stay on the private Docker network and must not be published. Keep graph-node's query port (`8000`) private and use the query gateway for
 external GraphQL access.
 
 ## Run and Deploy Locally (graph-node + IPFS + Postgres)
