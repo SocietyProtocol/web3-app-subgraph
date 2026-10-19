@@ -81,7 +81,7 @@ const PERSISTED_DOCUMENTS = Object.freeze({
       maxNumericValue: 10000000000,
       maxNodes: 512,
       maxObjectKeys: 32,
-      allowedKeys: Object.freeze(["and","or","creatorAddress_contains_nocase","managers_","holders_","profileUser_","name_contains_nocase","id","isProfile","isCommunity","isOfficial"]),
+      allowedKeys: Object.freeze(["and","or","creatorAddress_contains_nocase","managers_","holders_","profileUser_","name_contains_nocase","id","id_in","isProfile","isCommunity","isOfficial"]),
       variables: Object.freeze({
       "first": Object.freeze({
         type: "Int!",
@@ -113,7 +113,7 @@ const PERSISTED_DOCUMENTS = Object.freeze({
         type: "Badge_filter",
         required: false,
         kind: "filter",
-        allowedKeys: Object.freeze(["and","or","creatorAddress_contains_nocase","managers_","holders_","profileUser_","name_contains_nocase","id","isProfile","isCommunity","isOfficial"]),
+        allowedKeys: Object.freeze(["and","or","creatorAddress_contains_nocase","managers_","holders_","profileUser_","name_contains_nocase","id","id_in","isProfile","isCommunity","isOfficial"]),
       }),
       }),
     }),
@@ -129,7 +129,7 @@ const PERSISTED_DOCUMENTS = Object.freeze({
       maxNumericValue: 10000000000,
       maxNodes: 512,
       maxObjectKeys: 32,
-      allowedKeys: Object.freeze(["and","or","manager_","members_","name_contains_nocase","id","tierName_in","tierExpiresAt_gt","tierName","tierExpiresAt_lt","tierExpiresAt"]),
+      allowedKeys: Object.freeze(["and","or","manager_","members_","name_contains_nocase","id","id_in","tierName_in","tierExpiresAt_gt","tierName","tierExpiresAt_lt","tierExpiresAt"]),
       variables: Object.freeze({
       "first": Object.freeze({
         type: "Int!",
@@ -161,7 +161,7 @@ const PERSISTED_DOCUMENTS = Object.freeze({
         type: "Community_filter",
         required: false,
         kind: "filter",
-        allowedKeys: Object.freeze(["and","or","manager_","members_","name_contains_nocase","id","tierName_in","tierExpiresAt_gt","tierName","tierExpiresAt_lt","tierExpiresAt"]),
+        allowedKeys: Object.freeze(["and","or","manager_","members_","name_contains_nocase","id","id_in","tierName_in","tierExpiresAt_gt","tierName","tierExpiresAt_lt","tierExpiresAt"]),
       }),
       }),
     }),
@@ -368,12 +368,12 @@ const PERSISTED_DOCUMENTS = Object.freeze({
     variablePolicy: Object.freeze({
       maxPayloadBytes: 32768,
       maxDepth: 6,
-      maxArrayLength: 32,
+      maxArrayLength: 64,
       maxStringBytes: 256,
       maxNumericValue: 10000000000,
       maxNodes: 512,
       maxObjectKeys: 32,
-      allowedKeys: Object.freeze(["and","or","name_contains_nocase","id","profile_not","metadata_","protocolRoles_contains","protocolRoleCount"]),
+      allowedKeys: Object.freeze(["and","or","name_contains_nocase","id","id_in","id_not_in","profile_not","metadata_","protocolRoles_contains","protocolRoleCount"]),
       variables: Object.freeze({
       "first": Object.freeze({
         type: "Int!",
@@ -405,7 +405,7 @@ const PERSISTED_DOCUMENTS = Object.freeze({
         type: "User_filter",
         required: false,
         kind: "filter",
-        allowedKeys: Object.freeze(["and","or","name_contains_nocase","id","profile_not","metadata_","protocolRoles_contains","protocolRoleCount"]),
+        allowedKeys: Object.freeze(["and","or","name_contains_nocase","id","id_in","id_not_in","profile_not","metadata_","protocolRoles_contains","protocolRoleCount"]),
       }),
       }),
     }),
