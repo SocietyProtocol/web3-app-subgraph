@@ -1,0 +1,35 @@
+name: Deploy to AWS
+
+on:
+  push:
+    branches: [main, staging]
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: aws-outpost-subgraph
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::019141478782:role/society-github-deploy
+          aws-region: us-east-1
+      - name: Deploy the query gateway
+        env:
+          IMAGE: ${{ github.ref_name == 'staging' && 'society-gateway:staging' || 'society-gateway:prod' }}
+          SERVICE: ${{ github.ref_name == 'staging' && 'staging-gateway' || 'prod-gateway' }}
+          CONTEXT: infra/query-gateway
+        run: bash .github/scripts/deploy-outpost.sh
+      - name: Deploy graph-node
+        env:
+          IMAGE: ${{ github.ref_name == 'staging' && 'society-graph-node:staging' || 'society-graph-node:prod' }}
+          SERVICE: ${{ github.ref_name == 'staging' && 'staging-graph-node' || 'prod-graph-node' }}
+          CONTEXT: infra/graph-node
+        run: bash .github/scripts/deploy-outpost.sh

@@ -18,33 +18,23 @@ PORT=8080 npm start
 Run the deterministic built-in test suite with `npm test`. The service requires
 Node `24.13.0` or a later Node 24 release.
 
-## Railway deployment
+## AWS deployment
 
-Create a separate Railway service from this directory with **Root Directory** set
-to `/infra/query-gateway` (relative to the repository root). Railway should build
-the included `Dockerfile`; the image listens on `0.0.0.0:$PORT` and runs as the
-non-root `node` user.
+Build the included `Dockerfile` on the AWS outpost. The image listens on
+`0.0.0.0:$PORT` and runs as the non-root `node` user.
 
-Set these Railway variables on the gateway service:
+Production:
 
 ```text
 NODE_ENV=production
-GRAPH_NODE_SUBGRAPH_URL=http://graph-node.railway.internal:8000/subgraphs/name/society-mainnet
+GRAPH_NODE_SUBGRAPH_URL=http://prod-graph-node:8000/subgraphs/name/society-mainnet-v2
 GRAPH_QUERY_GATEWAY_TOKEN=<random-secret-at-least-32-utf8-bytes>
+PORT=8080
 ```
 
-Railway supplies `PORT`; do not hard-code it in the service configuration. Add one
-public Railway domain targeting the gateway's `$PORT` and use
-`https://<gateway-public-domain>/healthz` as its health-check target (path
-`/healthz`). `/healthz` is intentionally unauthenticated. Clients must send
-`Authorization: Bearer <GRAPH_QUERY_GATEWAY_TOKEN>` to `POST /graphql`.
+Staging uses `http://staging-graph-node:8000/subgraphs/name/society-sepolia`. The gateway and graph-node must share the Docker network so those names resolve. `/healthz` is unauthenticated. Clients send `Authorization: Bearer <GRAPH_QUERY_GATEWAY_TOKEN>` to `POST /graphql`.
 
-The production URL is intentionally restricted to the exact private Graph Node
-query endpoint shown above. The gateway service and graph-node must be in the same
-Railway private network so `graph-node.railway.internal` resolves at runtime. Image
-builds must not depend on private service DNS. Graph-node admin `8020`, PostgreSQL,
-and the Kubo API (`5001`) remain private with no public domains; none is an ingress
-for this service.
+In production the gateway only accepts those private graph-node hosts and the `society-mainnet`, `society-mainnet-v2`, and `society-sepolia` paths. Graph-node admin `8020`, PostgreSQL, and the Kubo API (`5001`) stay private.
 
 The Dockerfile pins the Node base image to the explicit `24.13.0` patch tag and
 runs the final layer as the non-root `node` user. CI must resolve that tag to a

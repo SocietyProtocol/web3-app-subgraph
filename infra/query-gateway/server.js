@@ -77,6 +77,8 @@ function validateUpstreamUrl(value, nodeEnv) {
 
   if (nodeEnv === "production") {
     const allowedHost =
+      upstreamUrl.hostname === "prod-graph-node" ||
+      upstreamUrl.hostname === "staging-graph-node" ||
       upstreamUrl.hostname === "graph-node.railway.internal" ||
       upstreamUrl.hostname === "graph-node-v2.railway.internal" ||
       upstreamUrl.hostname === "graph-node-staging.railway.internal";
