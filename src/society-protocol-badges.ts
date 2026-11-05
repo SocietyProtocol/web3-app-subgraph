@@ -175,6 +175,7 @@ export function handleTransferSingle(event: TransferSingle): void {
     "0x0000000000000000000000000000000000000000"
   ) {
     burn(
+      event.address,
       event.params.id,
       event.params.from,
       event.params.value,
@@ -188,6 +189,7 @@ export function handleTransferSingle(event: TransferSingle): void {
   // Transferring
   else {
     transfer(
+      event.address,
       event.params.id,
       event.params.from,
       event.params.to,
@@ -225,6 +227,7 @@ export function handleTransferBatch(event: TransferBatch): void {
     // Burning
     else if (to.toHexString() == "0x0000000000000000000000000000000000000000") {
       burn(
+        event.address,
         badgeId,
         from,
         event.params.values[i],
@@ -237,6 +240,7 @@ export function handleTransferBatch(event: TransferBatch): void {
     // Transferring
     else {
       transfer(
+        event.address,
         badgeId,
         from,
         to,
