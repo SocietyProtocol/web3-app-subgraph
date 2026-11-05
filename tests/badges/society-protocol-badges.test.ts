@@ -79,6 +79,9 @@ function createAndSaveUser(address: Address, badges: string[]): User {
   return user;
 }
 
+const holder = Address.fromString("0x5eA1474CeFA1ea5986327F97932B587deD802CF7");
+const other = Address.fromString("0xf3dBd9F4C902c7183E0fd22bFdbAF5ed330845c4");
+
 describe("Society Protocol Badges Mappings", () => {
   afterEach(() => {
     clearStore();
@@ -808,6 +811,121 @@ describe("Society Protocol Badges Mappings", () => {
       assert.i32Equals(updatedUser!.badges.length, 0);
 
       log.success("Handled burning non-existent badge gracefully", []);
+    });
+  });
+
+  describe("handleTransferSingle - holders with several copies", () => {
+    test("Minting a second copy keeps one holder", () => {
+      const badge = createAndSaveBadge("1");
+      badge.holdersCount = BigInt.fromI32(1);
+      badge.save();
+      createAndSaveUser(holder, ["1"]);
+
+      handleTransferSingle(
+        createTransferSingleEvent(
+          Address.fromString(ZERO_ADDRESS),
+          holder,
+          BigInt.fromI32(1),
+          BigInt.fromI32(1),
+        ),
+      );
+
+      assert.i32Equals(User.load(holder.toHexString())!.badges.length, 1);
+      assert.bigIntEquals(
+        Badge.load("1")!.holdersCount,
+        BigInt.fromI32(1),
+      );
+    });
+
+    test("Burning one of two copies keeps the holder", () => {
+      const badge = createAndSaveBadge("1");
+      badge.holdersCount = BigInt.fromI32(1);
+      badge.save();
+      createAndSaveUser(holder, ["1"]);
+
+      handleTransferSingle(
+        createTransferSingleEvent(
+          holder,
+          Address.fromString(ZERO_ADDRESS),
+          BigInt.fromI32(1),
+          BigInt.fromI32(1),
+          BigInt.fromI32(1),
+        ),
+      );
+
+      assert.i32Equals(User.load(holder.toHexString())!.badges.length, 1);
+      assert.bigIntEquals(
+        Badge.load("1")!.holdersCount,
+        BigInt.fromI32(1),
+      );
+    });
+
+    test("Burning the last copy removes the holder", () => {
+      const badge = createAndSaveBadge("1");
+      badge.holdersCount = BigInt.fromI32(1);
+      badge.save();
+      createAndSaveUser(holder, ["1"]);
+
+      handleTransferSingle(
+        createTransferSingleEvent(
+          holder,
+          Address.fromString(ZERO_ADDRESS),
+          BigInt.fromI32(1),
+          BigInt.fromI32(1),
+        ),
+      );
+
+      assert.i32Equals(User.load(holder.toHexString())!.badges.length, 0);
+      assert.bigIntEquals(Badge.load("1")!.holdersCount, BigInt.zero());
+    });
+
+    test("Transferring one of two copies keeps the sender and adds the receiver", () => {
+      const badge = createAndSaveBadge("1");
+      badge.holdersCount = BigInt.fromI32(1);
+      badge.save();
+      createAndSaveUser(holder, ["1"]);
+      createAndSaveUser(other, new Array());
+
+      handleTransferSingle(
+        createTransferSingleEvent(
+          holder,
+          other,
+          BigInt.fromI32(1),
+          BigInt.fromI32(1),
+          BigInt.fromI32(1),
+        ),
+      );
+
+      assert.i32Equals(User.load(holder.toHexString())!.badges.length, 1);
+      assert.i32Equals(User.load(other.toHexString())!.badges.length, 1);
+      assert.bigIntEquals(
+        Badge.load("1")!.holdersCount,
+        BigInt.fromI32(2),
+      );
+    });
+
+    test("Transferring the last copy moves the holder", () => {
+      const badge = createAndSaveBadge("1");
+      badge.holdersCount = BigInt.fromI32(1);
+      badge.save();
+      createAndSaveUser(holder, ["1"]);
+      createAndSaveUser(other, new Array());
+
+      handleTransferSingle(
+        createTransferSingleEvent(
+          holder,
+          other,
+          BigInt.fromI32(1),
+          BigInt.fromI32(1),
+        ),
+      );
+
+      assert.i32Equals(User.load(holder.toHexString())!.badges.length, 0);
+      assert.i32Equals(User.load(other.toHexString())!.badges.length, 1);
+      assert.bigIntEquals(
+        Badge.load("1")!.holdersCount,
+        BigInt.fromI32(1),
+      );
     });
   });
 
