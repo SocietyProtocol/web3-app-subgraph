@@ -196,22 +196,25 @@ test("accepts the smart-account legacy filters the app sends", async () => {
 });
 
 // The client's community Members tab: fetchCommunityMembers builds
-// { community_: { id } } and, when searching, adds user_ from the Users
-// buildWhereClause with includeUnregistered, which nests 7 levels deep.
-function communityMembersSearchWhere(communityId, searchText) {
+// { community_: { id } } and, when searching, a user_ filter on User's own
+// fields only (graph-node runs one level of child filter, so no metadata_
+// under user_): the name, the address, and the ids of the members whose
+// profile name matched, looked up first with a Users query.
+function communityMembersSearchWhere(communityId, searchText, nameMatchedIds = []) {
+  const or = [{ name_contains_nocase: searchText }, { id: searchText.toLowerCase() }];
+  if (nameMatchedIds.length > 0) or.push({ id_in: nameMatchedIds });
+  return { community_: { id: communityId }, user_: { or } };
+}
+
+// The Users lookup behind that search: the community's members whose
+// profile Metadata name matches (metadata_ is one child-filter level here).
+function memberNameLookupVariables(communityId, searchText) {
   return {
-    community_: { id: communityId },
-    user_: {
-      and: [
-        {
-          or: [
-            { name_contains_nocase: searchText },
-            { metadata_: { name_contains_nocase: searchText } },
-            { id: searchText },
-          ],
-        },
-      ],
-    },
+    first: 100,
+    skip: 0,
+    orderBy: "profile__createdAt",
+    orderDirection: "asc",
+    where: { communities_contains: [communityId], metadata_: { name_contains_nocase: searchText } },
   };
 }
 
@@ -234,6 +237,9 @@ test("accepts the CommunityMembers filters the Members tab sends", async () => {
     variableSets.push({ first: 10, skip: 20, ...sort, where: { community_: { id: "116" } } });
     // Search: infinite query fetches one extra row per page.
     variableSets.push({ first: 11, skip: 10, ...sort, where: communityMembersSearchWhere("116", "alice b") });
+    // Search with the most profile-name matches the client passes back.
+    const matched = Array.from({ length: 100 }, (_, i) => address(i + 1));
+    variableSets.push({ first: 11, skip: 0, ...sort, where: communityMembersSearchWhere("116", "alice", matched) });
   }
   variableSets.push({
     first: 11,
@@ -251,16 +257,44 @@ test("accepts the CommunityMembers filters the Members tab sends", async () => {
   assert.deepEqual(forwarded, variableSets);
 });
 
+test("accepts the Users profile-name lookup of the member search", async () => {
+  const forwarded = [];
+  const baseUrl = await makeGateway(async (upstreamRequest, response) => {
+    let raw = "";
+    for await (const chunk of upstreamRequest) raw += chunk;
+    forwarded.push(JSON.parse(raw).variables);
+    response.end(JSON.stringify({ data: { users: [] } }));
+  });
+  const variables = memberNameLookupVariables("116", "alice b");
+  const result = await request(baseUrl, {
+    headers: { "content-type": "application/json" },
+    body: graphBody("Users", variables),
+  });
+  assert.equal(result.status, 200);
+  assert.deepEqual(forwarded, [variables]);
+});
+
 test("still rejects CommunityMembers filters beyond the search shape", async () => {
   const baseUrl = await makeGateway((_request, response) =>
     response.end(JSON.stringify({ data: { communityMemberships: [] } })),
   );
   const base = { first: 11, skip: 0, orderBy: "joinActivity__timestamp", orderDirection: "desc" };
-  const tooDeep = communityMembersSearchWhere("116", "alice");
-  tooDeep.user_ = { and: [tooDeep.user_] };
-  const otherMetadataKey = communityMembersSearchWhere("116", "alice");
-  otherMetadataKey.user_.and[0].or[1] = { metadata_: { bio_contains_nocase: "alice" } };
-  for (const where of [tooDeep, otherMetadataKey]) {
+  // The filter graph-node refuses: a child filter (metadata_) inside user_.
+  const nestedMetadata = communityMembersSearchWhere("116", "alice");
+  nestedMetadata.user_.or.push({ metadata_: { name_contains_nocase: "alice" } });
+  // The previous client shape, wrapped in and.
+  const wrappedInAnd = communityMembersSearchWhere("116", "alice");
+  wrappedInAnd.user_ = { and: [wrappedInAnd.user_] };
+  const tooDeep = communityMembersSearchWhere("116", "alice", [address(1)]);
+  tooDeep.user_.or[2] = { or: [tooDeep.user_.or[2]] };
+  const tooManyIds = communityMembersSearchWhere(
+    "116",
+    "alice",
+    Array.from({ length: 101 }, (_, i) => address(i + 1)),
+  );
+  const profileFilter = communityMembersSearchWhere("116", "alice");
+  profileFilter.user_.or.push({ profile_not: null });
+  for (const where of [nestedMetadata, wrappedInAnd, tooDeep, tooManyIds, profileFilter]) {
     const result = await request(baseUrl, {
       headers: { "content-type": "application/json" },
       body: graphBody("CommunityMembers", { ...base, where }),
