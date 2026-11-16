@@ -191,6 +191,80 @@ test("accepts the smart-account legacy filters the app sends", async () => {
   }
 });
 
+// The client's community Members tab: fetchCommunityMembers builds
+// { community_: { id } } and, when searching, adds user_ from the Users
+// buildWhereClause with includeUnregistered, which nests 7 levels deep.
+function communityMembersSearchWhere(communityId, searchText) {
+  return {
+    community_: { id: communityId },
+    user_: {
+      and: [
+        {
+          or: [
+            { name_contains_nocase: searchText },
+            { metadata_: { name_contains_nocase: searchText } },
+            { id: searchText },
+          ],
+        },
+      ],
+    },
+  };
+}
+
+test("accepts the CommunityMembers filters the Members tab sends", async () => {
+  const forwarded = [];
+  const baseUrl = await makeGateway(async (upstreamRequest, response) => {
+    let raw = "";
+    for await (const chunk of upstreamRequest) raw += chunk;
+    forwarded.push(JSON.parse(raw).variables);
+    response.end(JSON.stringify({ data: { communityMemberships: [] } }));
+  });
+  const sorts = [
+    { orderBy: "joinActivity__timestamp", orderDirection: "desc" },
+    { orderBy: "joinActivity__timestamp", orderDirection: "asc" },
+    { orderBy: "user__name", orderDirection: "asc" },
+  ];
+  const variableSets = [];
+  for (const sort of sorts) {
+    // Paged list without a search term.
+    variableSets.push({ first: 10, skip: 20, ...sort, where: { community_: { id: "116" } } });
+    // Search: infinite query fetches one extra row per page.
+    variableSets.push({ first: 11, skip: 10, ...sort, where: communityMembersSearchWhere("116", "alice b") });
+  }
+  variableSets.push({
+    first: 11,
+    skip: 0,
+    ...sorts[0],
+    where: communityMembersSearchWhere("18", address(42)),
+  });
+  for (const variables of variableSets) {
+    const result = await request(baseUrl, {
+      headers: { "content-type": "application/json" },
+      body: graphBody("CommunityMembers", variables),
+    });
+    assert.equal(result.status, 200, JSON.stringify(variables.where));
+  }
+  assert.deepEqual(forwarded, variableSets);
+});
+
+test("still rejects CommunityMembers filters beyond the search shape", async () => {
+  const baseUrl = await makeGateway((_request, response) =>
+    response.end(JSON.stringify({ data: { communityMemberships: [] } })),
+  );
+  const base = { first: 11, skip: 0, orderBy: "joinActivity__timestamp", orderDirection: "desc" };
+  const tooDeep = communityMembersSearchWhere("116", "alice");
+  tooDeep.user_ = { and: [tooDeep.user_] };
+  const otherMetadataKey = communityMembersSearchWhere("116", "alice");
+  otherMetadataKey.user_.and[0].or[1] = { metadata_: { bio_contains_nocase: "alice" } };
+  for (const where of [tooDeep, otherMetadataKey]) {
+    const result = await request(baseUrl, {
+      headers: { "content-type": "application/json" },
+      body: graphBody("CommunityMembers", { ...base, where }),
+    });
+    assert.equal(result.status, 400, JSON.stringify(where));
+  }
+});
+
 test("strips data-URI photos from upstream GraphQL data", async () => {
   const { stripDataUriImages } = require("./server");
   const stripped = stripDataUriImages({
