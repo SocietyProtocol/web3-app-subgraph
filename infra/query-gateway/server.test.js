@@ -153,6 +153,44 @@ test("accepts Users protocol role filters", async () => {
   });
 });
 
+const address = (i) => `0x${i.toString(16).padStart(40, "0")}`;
+
+test("accepts the smart-account legacy filters the app sends", async () => {
+  const baseUrl = await makeGateway(async (_upstreamRequest, response) => {
+    response.end(JSON.stringify({ data: { users: [], badges: [], communities: [] } }));
+  });
+  const page = { first: 5, skip: 0, orderDirection: "desc" };
+  const legacy = Array.from({ length: 35 }, (_, i) => address(i + 1));
+  const owners = [address(100), address(101)];
+  const bodies = [
+    graphBody("Users", {
+      ...page,
+      first: 1000,
+      orderBy: "profile__createdAt",
+      where: { id_in: legacy, profile_not: null },
+    }),
+    graphBody("Users", {
+      ...page,
+      orderBy: "profile__createdAt",
+      where: { and: [{ profile_not: null }, { id_not_in: legacy }] },
+    }),
+    graphBody("Badges", {
+      ...page,
+      orderBy: "createdAt",
+      where: { and: [{ managers_: { id_in: owners } }] },
+    }),
+    graphBody("Communities", {
+      ...page,
+      orderBy: "createdAt",
+      where: { and: [{ manager_: { id_in: owners } }] },
+    }),
+  ];
+  for (const body of bodies) {
+    const result = await request(baseUrl, { headers: { "content-type": "application/json" }, body });
+    assert.equal(result.status, 200, body.slice(0, 80));
+  }
+});
+
 test("strips data-URI photos from upstream GraphQL data", async () => {
   const { stripDataUriImages } = require("./server");
   const stripped = stripDataUriImages({
@@ -488,6 +526,32 @@ test("validates tokens, production upstream policy, and canonicalization", () =>
 
   assert.equal(getOperationName(query("Users").replaceAll("\n", " ")), "Users");
   assert.throws(() => getOperationName(query("Users").replace("    name\n", "    bio\n")), /approved persisted query/);
+});
+
+test("accepts the staging graph-node URL and rejects an unknown host", () => {
+  const base = {
+    GRAPH_NODE_SUBGRAPH_URL: "http://graph-node.railway.internal:8000/subgraphs/name/society-mainnet",
+    GRAPH_QUERY_GATEWAY_TOKEN: TEST_TOKEN,
+    PORT: "8080",
+    NODE_ENV: "production",
+  };
+  const staging = readConfig({
+    ...base,
+    GRAPH_NODE_SUBGRAPH_URL:
+      "http://graph-node-staging.railway.internal:8000/subgraphs/name/society-sepolia",
+  });
+  assert.equal(
+    staging.upstreamUrl.href,
+    "http://graph-node-staging.railway.internal:8000/subgraphs/name/society-sepolia",
+  );
+  assert.throws(
+    () =>
+      readConfig({
+        ...base,
+        GRAPH_NODE_SUBGRAPH_URL: "http://unknown.example:8000/subgraphs/name/society-sepolia",
+      }),
+    /private graph-node query URL/,
+  );
 });
 
 test("gracefully shuts down and stops accepting new requests", async () => {

@@ -12,6 +12,32 @@ import {
 } from "../../generated/schema";
 import { findOrCreateUser } from "../user";
 import { rebuildUserProtocolRoles } from "../protocol-roles";
+import { SocietyProtocolBadges } from "../../generated/SocietyProtocolBadges/SocietyProtocolBadges";
+
+/**
+ * Whether `account` still holds at least one of badge `badgeId` on chain.
+ *
+ * The subgraph models holding as a set, but the badges are ERC-1155: an
+ * account can own several of the same badge, so a burn or transfer of one
+ * must not drop the holder while a balance remains. Reads the balance at the
+ * event's block. When the call reverts (e.g. a hook's `onBalanceOf`) it
+ * returns false, which keeps the previous "one event removes the holder"
+ * behavior.
+ */
+export function stillHoldsBadge(
+  contract: Address,
+  account: Address,
+  badgeId: BigInt,
+): boolean {
+  const result = SocietyProtocolBadges.bind(contract).try_balanceOf(
+    account,
+    badgeId,
+  );
+  if (result.reverted) {
+    return false;
+  }
+  return result.value.gt(BigInt.zero());
+}
 
 export function generateActivityId(
   txHash: Bytes,
@@ -138,6 +164,7 @@ export function mint(
 }
 
 export function burn(
+  contract: Address,
   badgeId: BigInt,
   userId: Address,
   value: BigInt,
@@ -154,6 +181,11 @@ export function burn(
   }
 
   const badgeIndex = user.badges.indexOf(badge.id);
+
+  // Another copy of the badge remains: still a holder, nothing to undo.
+  if (badgeIndex >= 0 && stillHoldsBadge(contract, userId, badgeId)) {
+    return;
+  }
 
   if (badgeIndex >= 0) {
     const updatedBadges = user.badges;
@@ -224,6 +256,7 @@ export function burn(
 }
 
 export function transfer(
+  contract: Address,
   badgeId: BigInt,
   fromUserId: Address,
   toUserId: Address,
@@ -242,13 +275,17 @@ export function transfer(
   }
 
   const badgeIndex = fromUser.badges.indexOf(badge.id);
+  const fromStillHolds =
+    badgeIndex >= 0 && stillHoldsBadge(contract, fromUserId, badgeId);
 
-  if (badgeIndex >= 0) {
+  if (badgeIndex >= 0 && !fromStillHolds) {
     const updatedBadges = fromUser.badges;
     updatedBadges.splice(badgeIndex, 1);
     fromUser.badges = updatedBadges;
     rebuildUserProtocolRoles(fromUser);
     fromUser.save();
+    badge.holdersCount = badge.holdersCount.minus(BigInt.fromI32(1));
+    badge.save();
   }
 
   const alreadyHasBadge = toUser.badges.indexOf(badge.id) >= 0;
@@ -259,6 +296,8 @@ export function transfer(
     toUser.badges = updatedBadges;
     rebuildUserProtocolRoles(toUser);
     toUser.save();
+    badge.holdersCount = badge.holdersCount.plus(BigInt.fromI32(1));
+    badge.save();
   }
 
   if (badge.community != null) {
@@ -306,7 +345,7 @@ export function transfer(
     ) {
       // Member badge transfer → transfer community membership
       const fromIndex = fromUser.communities.indexOf(community.id);
-      if (fromIndex >= 0) {
+      if (fromIndex >= 0 && !fromStillHolds) {
         const fromCommunities = fromUser.communities;
         fromCommunities.splice(fromIndex, 1);
         fromUser.communities = fromCommunities;

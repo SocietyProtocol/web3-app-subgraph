@@ -106,12 +106,45 @@ export function createURIEvent(id: BigInt, value: string): URI {
   return uriEvent;
 }
 
+/**
+ * Mocks `balanceOf(account, id)` on the badges contract. The handlers read it
+ * after a burn or transfer to tell whether the sender still holds a copy.
+ */
+export function mockBalanceOf(
+  account: Address,
+  id: BigInt,
+  balance: BigInt,
+): void {
+  createMockedFunction(
+    societyProtocolBadgesContractAddress,
+    "balanceOf",
+    "balanceOf(address,uint256):(uint256)",
+  )
+    .withArgs([
+      ethereum.Value.fromAddress(account),
+      ethereum.Value.fromUnsignedBigInt(id),
+    ])
+    .returns([ethereum.Value.fromUnsignedBigInt(balance)]);
+}
+
+function mockSenderBalance(from: Address, id: BigInt, remaining: BigInt): void {
+  if (from.toHexString() != ZERO_ADDRESS) {
+    mockBalanceOf(from, id, remaining);
+  }
+}
+
+/**
+ * `remainingFromBalance` is the sender's balance after the event; zero (the
+ * default) means the sender gave up their last copy.
+ */
 export function createTransferSingleEvent(
   from: Address,
   to: Address,
   id: BigInt,
   value: BigInt,
+  remainingFromBalance: BigInt = BigInt.zero(),
 ): TransferSingle {
+  mockSenderBalance(from, id, remainingFromBalance);
   let transferSingleEvent = changetype<TransferSingle>(
     newMockEventWithParams([
       new ethereum.EventParam(
@@ -140,7 +173,11 @@ export function createTransferBatchEvent(
   to: Address,
   ids: Array<BigInt>,
   values: Array<BigInt>,
+  remainingFromBalance: BigInt = BigInt.zero(),
 ): TransferBatch {
+  for (let i = 0; i < ids.length; i++) {
+    mockSenderBalance(from, ids[i], remainingFromBalance);
+  }
   let transferBatchEvent = changetype<TransferBatch>(
     newMockEventWithParams([
       new ethereum.EventParam(
