@@ -6,8 +6,11 @@ const { PERSISTED_DOCUMENTS } = require("./generated/registry");
 const {
   HEADER_TIMEOUT_MS,
   KEEP_ALIVE_TIMEOUT_MS,
+  MAX_IN_FLIGHT_UPSTREAM,
   MAX_QUERY_BYTES,
+  MAX_QUEUED_UPSTREAM,
   MAX_REQUEST_BYTES,
+  QUEUE_WAIT_MS,
   REQUEST_TIMEOUT_MS,
   createGatewayServer,
   getOperationName,
@@ -48,6 +51,7 @@ async function makeGateway(upstreamHandler, overrides = {}) {
     config: {
       upstreamUrl: `http://127.0.0.1:${upstreamPort}/subgraphs/name/society-mainnet`,
       token: TEST_TOKEN,
+      log: () => {},
       ...overrides,
     },
   });
@@ -428,11 +432,12 @@ test("enforces request, variable, upstream timeout, response, and concurrency li
     upstreamCalls += 1;
     await held;
     response.end(JSON.stringify({ data: {} }));
-  }, { maxInFlightUpstream: 1 });
+  }, { maxInFlightUpstream: 1, maxQueuedUpstream: 0 });
   const first = request(concurrent, { headers: { "content-type": "application/json" }, body: graphBody("Status") });
   await new Promise((resolve) => setTimeout(resolve, 10));
   const rejected = await request(concurrent, { headers: { "content-type": "application/json" }, body: graphBody("Status") });
   assert.equal(rejected.status, 503);
+  assert.equal(rejected.headers.get("retry-after"), "1");
   release();
   assert.equal((await first).status, 200);
   assert.equal(upstreamCalls, 1);
@@ -636,4 +641,239 @@ test("gracefully shuts down and stops accepting new requests", async () => {
   assert.equal(gateway.keepAliveTimeout, KEEP_ALIVE_TIMEOUT_MS);
   await shutdownGatewayServer(gateway, 100);
   await assert.rejects(fetch(`${baseUrl}/healthz`));
+});
+
+function heldUpstream() {
+  let calls = 0;
+  const releases = [];
+  const handler = (_request, response) => {
+    calls += 1;
+    releases.push(() => response.end(JSON.stringify({ data: {} })));
+  };
+  return {
+    handler,
+    calls: () => calls,
+    releaseOne: () => releases.shift()(),
+    releaseAll: () => {
+      while (releases.length) releases.shift()();
+    },
+  };
+}
+
+async function until(predicate, timeoutMs = 1_000) {
+  const deadline = Date.now() + timeoutMs;
+  while (!predicate()) {
+    if (Date.now() > deadline) throw new Error("condition was not met in time");
+    await new Promise((resolve) => setTimeout(resolve, 5));
+  }
+}
+
+const statusRequest = (baseUrl) =>
+  request(baseUrl, { headers: { "content-type": "application/json" }, body: graphBody("Status") });
+
+test("a request over the in-flight cap waits in the queue and then succeeds", async () => {
+  const upstream = heldUpstream();
+  const baseUrl = await makeGateway(upstream.handler, { maxInFlightUpstream: 2, queueWaitMs: 2_000 });
+  const gateway = gatewayServers[gatewayServers.length - 1];
+
+  const pending = Array.from({ length: 5 }, () => statusRequest(baseUrl));
+  await until(() => upstream.calls() === 2 && gateway.gatewayState.waiters.length === 3);
+  assert.equal(gateway.gatewayState.inFlight, 2);
+
+  // Each finished request hands its slot to the oldest waiter.
+  upstream.releaseOne();
+  await until(() => upstream.calls() === 3);
+  assert.equal(gateway.gatewayState.inFlight, 2);
+  assert.equal(gateway.gatewayState.waiters.length, 2);
+
+  const drain = setInterval(() => upstream.releaseAll(), 5);
+  try {
+    const statuses = (await Promise.all(pending)).map((result) => result.status);
+    assert.deepEqual(statuses, [200, 200, 200, 200, 200]);
+  } finally {
+    clearInterval(drain);
+  }
+  assert.equal(upstream.calls(), 5);
+  assert.equal(gateway.gatewayState.inFlight, 0);
+  assert.equal(gateway.gatewayState.waiters.length, 0);
+});
+
+test("a queued request that waits too long gets 503 with Retry-After and is logged", async () => {
+  const upstream = heldUpstream();
+  const lines = [];
+  const baseUrl = await makeGateway(upstream.handler, {
+    maxInFlightUpstream: 1,
+    queueWaitMs: 30,
+    log: (line) => lines.push(line),
+  });
+  const gateway = gatewayServers[gatewayServers.length - 1];
+
+  const first = statusRequest(baseUrl);
+  await until(() => upstream.calls() === 1);
+  const waited = await request(baseUrl, {
+    headers: { "content-type": "application/json" },
+    body: graphBody("Users", { first: 5, skip: 0, orderBy: "profile__createdAt", orderDirection: "desc", where: { name_contains_nocase: "secret-search-term" } }),
+  });
+  assert.equal(waited.status, 503);
+  assert.equal(waited.headers.get("retry-after"), "1");
+  assert.deepEqual(await waited.json(), { errors: [{ message: "Query gateway is busy" }] });
+  assert.equal(gateway.gatewayState.waiters.length, 0);
+
+  upstream.releaseAll();
+  assert.equal((await first).status, 200);
+  assert.equal(upstream.calls(), 1);
+
+  assert.equal(lines.length, 1);
+  assert.match(lines[0], /^query-gateway error op=Users status=503 reason="Query gateway is busy" inFlight=1 queued=0 waitedMs=\d+$/);
+  assert.doesNotMatch(lines[0], /secret-search-term|Bearer|token/);
+});
+
+test("a full queue answers 503 at once", async () => {
+  const upstream = heldUpstream();
+  const baseUrl = await makeGateway(upstream.handler, {
+    maxInFlightUpstream: 1,
+    maxQueuedUpstream: 1,
+    queueWaitMs: 5_000,
+  });
+  const gateway = gatewayServers[gatewayServers.length - 1];
+
+  const first = statusRequest(baseUrl);
+  await until(() => upstream.calls() === 1);
+  const queued = statusRequest(baseUrl);
+  await until(() => gateway.gatewayState.waiters.length === 1);
+
+  const startedAt = Date.now();
+  const overflow = await statusRequest(baseUrl);
+  assert.equal(overflow.status, 503);
+  assert.ok(Date.now() - startedAt < 1_000);
+
+  const drain = setInterval(() => upstream.releaseAll(), 5);
+  try {
+    assert.equal((await first).status, 200);
+    assert.equal((await queued).status, 200);
+  } finally {
+    clearInterval(drain);
+  }
+});
+
+test("a client that disconnects while queued leaves the queue without reaching upstream", async () => {
+  const upstream = heldUpstream();
+  const lines = [];
+  const baseUrl = await makeGateway(upstream.handler, {
+    maxInFlightUpstream: 1,
+    queueWaitMs: 5_000,
+    log: (line) => lines.push(line),
+  });
+  const gateway = gatewayServers[gatewayServers.length - 1];
+
+  const first = statusRequest(baseUrl);
+  await until(() => upstream.calls() === 1);
+  const body = graphBody("Status");
+  const abandoned = http.request({
+    host: "127.0.0.1",
+    port: gateway.address().port,
+    method: "POST",
+    path: "/graphql",
+    agent: false,
+    headers: {
+      authorization: `Bearer ${TEST_TOKEN}`,
+      "content-type": "application/json",
+      "content-length": Buffer.byteLength(body),
+    },
+  });
+  abandoned.on("error", () => {});
+  abandoned.end(body);
+  await until(() => gateway.gatewayState.waiters.length === 1);
+  abandoned.destroy();
+  await until(() => gateway.gatewayState.waiters.length === 0);
+
+  upstream.releaseAll();
+  assert.equal((await first).status, 200);
+  assert.equal(upstream.calls(), 1);
+  assert.equal(gateway.gatewayState.inFlight, 0);
+  assert.deepEqual(lines, []);
+});
+
+test("shutdown answers queued requests with 503", async () => {
+  const upstream = heldUpstream();
+  const baseUrl = await makeGateway(upstream.handler, { maxInFlightUpstream: 1, queueWaitMs: 5_000 });
+  const gateway = gatewayServers[gatewayServers.length - 1];
+
+  const first = statusRequest(baseUrl);
+  await until(() => upstream.calls() === 1);
+  const queued = statusRequest(baseUrl);
+  await until(() => gateway.gatewayState.waiters.length === 1);
+
+  const shutdown = shutdownGatewayServer(gateway, 1_000);
+  const queuedResult = await queued;
+  assert.equal(queuedResult.status, 503);
+  assert.deepEqual(await queuedResult.json(), { errors: [{ message: "Query gateway is shutting down" }] });
+  upstream.releaseAll();
+  assert.equal((await first).status, 200);
+  await shutdown;
+});
+
+test("logs upstream failures and refusals in one line without variables", async () => {
+  const lines = [];
+  const failing = await makeGateway((_request, response) => {
+    response.statusCode = 500;
+    response.end(JSON.stringify({ errors: [{ message: "store error" }] }));
+  }, { log: (line) => lines.push(line) });
+  const failed = await request(failing, {
+    headers: { "content-type": "application/json" },
+    body: graphBody("Users", { first: 5, skip: 0, orderBy: "profile__createdAt", orderDirection: "desc", where: { name_contains_nocase: "private-name" } }),
+  });
+  assert.equal(failed.status, 500);
+  assert.equal(lines.length, 1);
+  assert.match(lines[0], /^query-gateway error op=Users status=500 reason="upstream answered with an error status" inFlight=1 queued=0 upstreamMs=\d+$/);
+
+  const unreachable = await makeGateway((_request, response) => response.destroy(), { log: (line) => lines.push(line) });
+  const broken = await statusRequest(unreachable);
+  assert.equal(broken.status, 502);
+  assert.match(lines[1], /^query-gateway error op=Status status=502 reason="Upstream GraphQL request failed" inFlight=\d+ queued=0 upstreamMs=\d+$/);
+
+  const refused = await request(unreachable, {
+    headers: { "content-type": "application/json" },
+    body: graphBody("Badges", { first: 1_001, skip: 0, orderBy: "id", orderDirection: "desc", where: { name_contains_nocase: "private-name" } }),
+  });
+  assert.equal(refused.status, 400);
+  assert.match(lines[2], /^query-gateway refused op=- status=400 reason="GraphQL variables exceed operation limits" inFlight=0 queued=0$/);
+
+  for (const line of lines) {
+    assert.equal(line.includes("\n"), false);
+    assert.doesNotMatch(line, /private-name|Bearer|test-gateway-token/);
+  }
+});
+
+test("reads the in-flight cap and queue limits from the environment", () => {
+  const base = {
+    GRAPH_NODE_SUBGRAPH_URL: "http://127.0.0.1:8000/subgraphs/name/society-mainnet",
+    GRAPH_QUERY_GATEWAY_TOKEN: TEST_TOKEN,
+  };
+  const defaults = readConfig(base);
+  assert.equal(defaults.maxInFlightUpstream, MAX_IN_FLIGHT_UPSTREAM);
+  assert.equal(MAX_IN_FLIGHT_UPSTREAM, 32);
+  assert.equal(defaults.maxQueuedUpstream, MAX_QUEUED_UPSTREAM);
+  assert.equal(defaults.queueWaitMs, QUEUE_WAIT_MS);
+
+  const tuned = readConfig({
+    ...base,
+    GRAPH_QUERY_GATEWAY_MAX_IN_FLIGHT: "48",
+    GRAPH_QUERY_GATEWAY_MAX_QUEUED: "0",
+    GRAPH_QUERY_GATEWAY_QUEUE_WAIT_MS: "2500",
+  });
+  assert.equal(tuned.maxInFlightUpstream, 48);
+  assert.equal(tuned.maxQueuedUpstream, 0);
+  assert.equal(tuned.queueWaitMs, 2500);
+  assert.equal(readConfig({ ...base, GRAPH_QUERY_GATEWAY_MAX_IN_FLIGHT: "" }).maxInFlightUpstream, 32);
+
+  for (const [name, value] of [
+    ["GRAPH_QUERY_GATEWAY_MAX_IN_FLIGHT", "0"],
+    ["GRAPH_QUERY_GATEWAY_MAX_IN_FLIGHT", "abc"],
+    ["GRAPH_QUERY_GATEWAY_MAX_IN_FLIGHT", "1.5"],
+    ["GRAPH_QUERY_GATEWAY_MAX_QUEUED", "-1"],
+    ["GRAPH_QUERY_GATEWAY_QUEUE_WAIT_MS", "60000"],
+  ]) {
+    assert.throws(() => readConfig({ ...base, [name]: value }), new RegExp(`${name} must be an integer`));
+  }
 });
