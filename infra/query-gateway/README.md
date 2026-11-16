@@ -64,6 +64,27 @@ client authorization header, and never copies upstream response headers such as
 generic safe error shape. Header/request/keep-alive timers and graceful SIGTERM
 draining are enabled; client disconnects abort the upstream request.
 
+## Upstream concurrency
+
+At most `GRAPH_QUERY_GATEWAY_MAX_IN_FLIGHT` (default 32) queries are forwarded to
+graph-node at once. A request over that cap is checked first, then waits in a
+FIFO queue of at most `GRAPH_QUERY_GATEWAY_MAX_QUEUED` (default 128) requests for
+up to `GRAPH_QUERY_GATEWAY_QUEUE_WAIT_MS` (default 3000) milliseconds. When the
+queue is full or the wait runs out, the gateway answers `503` with
+`Retry-After: 1`. A client that disconnects while queued leaves the queue, and
+queued requests are answered `503` on shutdown. A page that fires a few dozen
+queries together, such as the accounts list, is served from the queue instead of
+being refused.
+
+Every refused or failed GraphQL request is logged on one line with the operation
+name (or `-` before the document is accepted), the status, the public reason, the
+in-flight and queued counts, and the queue or upstream time. Variables, queries
+and headers are never logged:
+
+```text
+query-gateway error op=Users status=503 reason="Query gateway is busy" inFlight=32 queued=0 waitedMs=3001
+```
+
 ## Token rotation
 
 Both `GRAPH_QUERY_GATEWAY_TOKEN` and the optional

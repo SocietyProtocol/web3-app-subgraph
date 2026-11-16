@@ -24,18 +24,28 @@ const REQUEST_TIMEOUT_MS = 15_000;
 const KEEP_ALIVE_TIMEOUT_MS = 5_000;
 const REQUEST_BODY_TIMEOUT_MS = 10_000;
 const SHUTDOWN_TIMEOUT_MS = 10_000;
-const MAX_IN_FLIGHT_UPSTREAM = 16;
+const MAX_IN_FLIGHT_UPSTREAM = 32;
+// A request over the in-flight cap waits for a slot instead of failing at once:
+// one page fires dozens of queries together, and each takes milliseconds.
+const MAX_QUEUED_UPSTREAM = 128;
+const QUEUE_WAIT_MS = 3_000;
+const BUSY_RETRY_AFTER_SECONDS = 1;
 const MAX_QUERY_BYTES = 8 * 1024;
 const MAX_GRAPHQL_TOKENS = 512;
 
 const ALLOWED_OPERATION_NAMES = new Set(Object.keys(PERSISTED_DOCUMENTS));
 
 class GatewayError extends Error {
-  constructor(status, message) {
+  constructor(status, message, headers) {
     super(message);
     this.status = status;
     this.publicMessage = message;
+    this.headers = headers;
   }
+}
+
+function busyError() {
+  return new GatewayError(503, "Query gateway is busy", { "retry-after": String(BUSY_RETRY_AFTER_SECONDS) });
 }
 
 function isPlainObject(value) {
@@ -98,6 +108,16 @@ function validateUpstreamUrl(value, nodeEnv) {
   return upstreamUrl;
 }
 
+function readIntegerEnv(env, name, fallback, min, max) {
+  const value = env[name];
+  if (value === undefined || value === "") return fallback;
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < min || parsed > max) {
+    throw new Error(`${name} must be an integer from ${min} to ${max}`);
+  }
+  return parsed;
+}
+
 function readConfig(env = process.env) {
   const nodeEnv = env.NODE_ENV || "development";
   const upstreamUrl = validateUpstreamUrl(env.GRAPH_NODE_SUBGRAPH_URL, nodeEnv);
@@ -117,6 +137,9 @@ function readConfig(env = process.env) {
     upstreamUrl,
     tokenDigests: Object.freeze(tokenDigests),
     port,
+    maxInFlightUpstream: readIntegerEnv(env, "GRAPH_QUERY_GATEWAY_MAX_IN_FLIGHT", MAX_IN_FLIGHT_UPSTREAM, 1, 1024),
+    maxQueuedUpstream: readIntegerEnv(env, "GRAPH_QUERY_GATEWAY_MAX_QUEUED", MAX_QUEUED_UPSTREAM, 0, 10_000),
+    queueWaitMs: readIntegerEnv(env, "GRAPH_QUERY_GATEWAY_QUEUE_WAIT_MS", QUEUE_WAIT_MS, 0, 30_000),
   };
 }
 
@@ -471,10 +494,11 @@ async function forwardQuery(payload, config, state, request, response) {
   }
 }
 
-function sendJson(response, status, body) {
+function sendJson(response, status, body, headers) {
   if (response.destroyed || response.writableEnded) return;
   const serialized = JSON.stringify(body);
   response.writeHead(status, {
+    ...headers,
     "cache-control": "no-store",
     "content-type": "application/json; charset=utf-8",
     "content-length": Buffer.byteLength(serialized),
@@ -486,10 +510,86 @@ function sendError(response, error) {
   if (response.destroyed || response.writableEnded) return;
   const status = error instanceof GatewayError ? error.status : 500;
   const message = error instanceof GatewayError ? error.publicMessage : "Query gateway failure";
-  sendJson(response, status, { errors: [{ message }] });
+  const headers = error instanceof GatewayError ? error.headers : undefined;
+  sendJson(response, status, { errors: [{ message }] }, headers);
+}
+
+/**
+ * One line per refused or failed GraphQL request: the operation name, the
+ * status, and the public reason. Never the variables, the query, or headers.
+ */
+function logFailure(config, state, fields) {
+  const parts = [
+    `query-gateway ${fields.status >= 500 ? "error" : "refused"}`,
+    `op=${fields.operationName || "-"}`,
+    `status=${fields.status}`,
+    `reason=${JSON.stringify(String(fields.reason).slice(0, 120))}`,
+    `inFlight=${state.inFlight}`,
+    `queued=${state.waiters.length}`,
+  ];
+  if (fields.waitedMs !== undefined) parts.push(`waitedMs=${fields.waitedMs}`);
+  if (fields.upstreamMs !== undefined) parts.push(`upstreamMs=${fields.upstreamMs}`);
+  try {
+    config.log(parts.join(" "));
+  } catch {
+    // Logging must never fail a request.
+  }
+}
+
+/**
+ * Takes an upstream slot. Over the cap the request waits in a bounded FIFO
+ * queue for up to `queueWaitMs`; a full queue or a wait that runs out is
+ * answered 503 with Retry-After. A client that disconnects while queued
+ * leaves the queue.
+ */
+function acquireUpstreamSlot(config, state, response) {
+  if (state.inFlight < config.maxInFlightUpstream && state.waiters.length === 0) {
+    state.inFlight += 1;
+    return Promise.resolve();
+  }
+  if (state.waiters.length >= config.maxQueuedUpstream || config.queueWaitMs <= 0) {
+    return Promise.reject(busyError());
+  }
+  return new Promise((resolve, reject) => {
+    const waiter = {};
+    const leave = () => {
+      clearTimeout(waiter.timer);
+      response.removeListener("close", onClose);
+      const index = state.waiters.indexOf(waiter);
+      if (index !== -1) state.waiters.splice(index, 1);
+    };
+    const onClose = () => {
+      leave();
+      reject(new GatewayError(499, "Client disconnected"));
+    };
+    waiter.grant = () => {
+      leave();
+      resolve();
+    };
+    waiter.fail = (error) => {
+      leave();
+      reject(error);
+    };
+    waiter.timer = setTimeout(() => waiter.fail(busyError()), config.queueWaitMs);
+    response.once("close", onClose);
+    state.waiters.push(waiter);
+  });
+}
+
+function releaseUpstreamSlot(state) {
+  const next = state.waiters[0];
+  if (next) {
+    // Hand the slot straight to the oldest waiter; inFlight stays the same.
+    next.grant();
+    return;
+  }
+  state.inFlight -= 1;
 }
 
 async function handleRequest(request, response, config, state) {
+  let operationName;
+  let waitedMs;
+  let upstreamMs;
   try {
     if (request.method === "GET" && request.url === "/healthz") {
       response.writeHead(200, { "cache-control": "no-store", "content-type": "text/plain; charset=utf-8" });
@@ -527,19 +627,48 @@ async function handleRequest(request, response, config, state) {
       throw new GatewayError(413, "Request body is too large");
     }
 
-    if (state.inFlight >= config.maxInFlightUpstream) {
-      consumeRequestBody(request);
-      throw new GatewayError(503, "Query gateway is busy");
-    }
-    state.inFlight += 1;
+    // Read and check the request before queueing for a slot: it is cheap and
+    // bounded, a refused query never takes a slot, and the log line can name
+    // the operation.
+    const payload = parseGraphQLRequest(await readRequestBody(request, config.requestBodyTimeoutMs));
+    operationName = payload.operationName;
+
+    const queuedAt = Date.now();
     try {
-      const payload = parseGraphQLRequest(await readRequestBody(request, config.requestBodyTimeoutMs));
+      await acquireUpstreamSlot(config, state, response);
+    } catch (error) {
+      waitedMs = Date.now() - queuedAt;
+      throw error;
+    }
+    const startedAt = Date.now();
+    try {
       const upstream = await forwardQuery(payload, config, state, request, response);
+      if (upstream.status >= 400) {
+        logFailure(config, state, {
+          operationName,
+          status: upstream.status,
+          reason: "upstream answered with an error status",
+          upstreamMs: Date.now() - startedAt,
+        });
+      }
       sendJson(response, upstream.status, upstream.body);
+    } catch (error) {
+      upstreamMs = Date.now() - startedAt;
+      throw error;
     } finally {
-      state.inFlight -= 1;
+      releaseUpstreamSlot(state);
     }
   } catch (error) {
+    const status = error instanceof GatewayError ? error.status : 500;
+    if (status !== 499) {
+      logFailure(config, state, {
+        operationName,
+        status,
+        reason: error instanceof GatewayError ? error.publicMessage : "Query gateway failure",
+        waitedMs,
+        upstreamMs,
+      });
+    }
     sendError(response, error);
   }
 }
@@ -557,10 +686,14 @@ function createGatewayServer(options = {}) {
     upstreamResponseCap: supplied.upstreamResponseCap ?? MAX_UPSTREAM_RESPONSE_BYTES,
     requestBodyTimeoutMs: supplied.requestBodyTimeoutMs ?? REQUEST_BODY_TIMEOUT_MS,
     maxInFlightUpstream: supplied.maxInFlightUpstream ?? MAX_IN_FLIGHT_UPSTREAM,
+    maxQueuedUpstream: supplied.maxQueuedUpstream ?? MAX_QUEUED_UPSTREAM,
+    queueWaitMs: supplied.queueWaitMs ?? QUEUE_WAIT_MS,
+    log: options.log || supplied.log || ((line) => console.warn(line)),
   };
   const state = {
     controllers: new Set(),
     inFlight: 0,
+    waiters: [],
     shuttingDown: false,
     shutdownPromise: null,
   };
@@ -583,6 +716,9 @@ function shutdownGatewayServer(server, timeoutMs = SHUTDOWN_TIMEOUT_MS) {
   const state = server.gatewayState;
   if (state.shutdownPromise) return state.shutdownPromise;
   state.shuttingDown = true;
+  for (const waiter of [...state.waiters]) {
+    waiter.fail(new GatewayError(503, "Query gateway is shutting down"));
+  }
   state.shutdownPromise = new Promise((resolve) => {
     let finished = false;
     const finish = () => {
@@ -607,7 +743,10 @@ if (require.main === module) {
     const config = readConfig();
     const server = createGatewayServer({ config });
     server.listen(config.port, "0.0.0.0", () => {
-      console.log(`query-gateway listening on 0.0.0.0:${config.port}`);
+      console.log(
+        `query-gateway listening on 0.0.0.0:${config.port} ` +
+          `(maxInFlight=${config.maxInFlightUpstream} maxQueued=${config.maxQueuedUpstream} queueWaitMs=${config.queueWaitMs})`,
+      );
     });
     let stopping = false;
     const stop = () => {
@@ -628,12 +767,14 @@ module.exports = {
   HEADER_TIMEOUT_MS,
   KEEP_ALIVE_TIMEOUT_MS,
   MAX_IN_FLIGHT_UPSTREAM,
+  MAX_QUEUED_UPSTREAM,
   MAX_GRAPHQL_TOKENS,
   MAX_QUERY_BYTES,
   MAX_REQUEST_BYTES,
   MAX_UPSTREAM_RESPONSE_BYTES,
   REQUEST_BODY_TIMEOUT_MS,
   REQUEST_TIMEOUT_MS,
+  QUEUE_WAIT_MS,
   SHUTDOWN_TIMEOUT_MS,
   UPSTREAM_TIMEOUT_MS,
   createGatewayServer,
