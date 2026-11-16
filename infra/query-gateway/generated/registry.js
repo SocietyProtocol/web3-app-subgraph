@@ -229,13 +229,13 @@ const PERSISTED_DOCUMENTS = Object.freeze({
     query: "query CommunityMembers($first: Int, $skip: Int, $where: CommunityMembership_filter, $orderBy: CommunityMembership_orderBy, $orderDirection: OrderDirection) {\n  communityMemberships(\n    first: $first\n    skip: $skip\n    orderBy: $orderBy\n    orderDirection: $orderDirection\n    where: $where\n  ) {\n    id\n    joinActivity {\n      id\n      timestamp\n    }\n    user {\n      id\n      name\n      bio\n      imageUrl\n      metadata {\n        name\n        bio\n        imageUrl\n      }\n    }\n  }\n}",
     variablePolicy: Object.freeze({
       maxPayloadBytes: 24576,
-      maxDepth: 6,
+      maxDepth: 7,
       maxArrayLength: 32,
       maxStringBytes: 256,
       maxNumericValue: 10000000000,
       maxNodes: 384,
       maxObjectKeys: 32,
-      allowedKeys: Object.freeze(["community_","user_","and","or","name_contains_nocase","id","profile_not"]),
+      allowedKeys: Object.freeze(["community_","user_","and","or","name_contains_nocase","metadata_","id","profile_not"]),
       variables: Object.freeze({
       "first": Object.freeze({
         type: "Int",
@@ -255,7 +255,7 @@ const PERSISTED_DOCUMENTS = Object.freeze({
         type: "CommunityMembership_filter",
         required: false,
         kind: "filter",
-        allowedKeys: Object.freeze(["community_","user_","and","or","name_contains_nocase","id","profile_not"]),
+        allowedKeys: Object.freeze(["community_","user_","and","or","name_contains_nocase","metadata_","id","profile_not"]),
       }),
       "orderBy": Object.freeze({
         type: "CommunityMembership_orderBy",
